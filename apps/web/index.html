@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="metric-fingerprint" content="e819989972c994d1">
+<title>A股量化研究平台 · 运行控制台</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#fbfcfd; --line:#e3e7ec;
+    --ink:#1b2430; --ink-2:#4a5768; --ink-3:#8492a3;
+    --up:#c62828; --up-bg:#fdecec; --down:#1b7a4b; --down-bg:#e8f5ee;
+    --accent:#1f4e79; --accent-bg:#eaf1f8; --warn:#b26a00; --warn-bg:#fff4e0;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.6}
+  .wrap{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+  header.top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+       background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-bottom:16px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{width:34px;height:34px;border-radius:8px;background:var(--accent);color:#fff;
+       display:grid;place-items:center;font-weight:700;font-size:15px;letter-spacing:-1px}
+  h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
+  .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .badge{font-size:11.5px;padding:4px 10px;border-radius:20px;border:1px solid var(--line);
+       background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+  .badge.online{background:var(--down-bg);border-color:#bfe3cf;color:var(--down)}
+  .badge.offline{background:var(--warn-bg);border-color:#f0d9ac;color:var(--warn)}
+  .badge.mono{font-family:var(--mono);font-size:11px}
+  .alert{border-radius:10px;padding:13px 18px;margin-bottom:16px;border:1px solid #f0c9c9;
+       background:var(--up-bg);color:#8e2020;font-size:13.5px;display:flex;gap:12px;align-items:flex-start}
+  .alert b{font-size:14px}
+  .alert .pill{background:var(--up);color:#fff;border-radius:5px;padding:2px 9px;font-size:11.5px;
+       font-weight:600;white-space:nowrap;margin-top:2px}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tab{border:0;background:transparent;padding:9px 15px;font-size:13.5px;color:var(--ink-2);
+       cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+  .tab:hover{color:var(--accent)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .panel{display:none}.panel.active{display:block}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 4px;font-weight:650}
+  .card .desc{font-size:12px;color:var(--ink-3);margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px}
+  .kpi{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .kpi .k{font-size:11.5px;color:var(--ink-3);margin-bottom:5px}
+  .kpi .v{font-size:20px;font-weight:650;font-family:var(--mono);letter-spacing:-.5px}
+  .kpi .n{font-size:11px;color:var(--ink-3);margin-top:3px}
+  .v.up{color:var(--up)} .v.down{color:var(--down)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;color:var(--ink-3);font-weight:600;background:var(--surface-2);
+     position:sticky;top:0;z-index:1}
+  tr:last-child td{border-bottom:0}
+  td.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+  .tw{overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:8px}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .tag.ok{background:var(--down-bg);color:var(--down)}
+  .tag.no{background:var(--up-bg);color:var(--up)}
+  .tag.mid{background:var(--warn-bg);color:var(--warn)}
+  .tag.info{background:var(--accent-bg);color:var(--accent)}
+  .chart{width:100%;height:auto;display:block}
+  .legend{display:flex;gap:16px;font-size:11.5px;color:var(--ink-3);margin-top:8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:11px;height:3px;vertical-align:middle;margin-right:5px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  button.act{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;
+       padding:8px 15px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  button.act:hover{opacity:.88}
+  button.act[disabled]{opacity:.45;cursor:not-allowed}
+  button.ghost{background:var(--surface);color:var(--accent);border-color:var(--line)}
+  .hint{font-size:11.5px;color:var(--ink-3)}
+  pre.log{background:#111a24;color:#d7e2ee;border-radius:8px;padding:13px 15px;font-family:var(--mono);
+       font-size:11.5px;line-height:1.55;max-height:280px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  ul.clean{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-2)}
+  ul.clean li{margin-bottom:5px}
+  a{color:var(--accent)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:860px){.split{grid-template-columns:1fr}}
+  footer{margin-top:22px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);
+       border-radius:10px;font-size:12px;color:var(--ink-3)}
+  .loading{padding:26px;text-align:center;color:var(--ink-3);font-size:13px}
+  .err{color:var(--up);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">QL</div>
+      <div>
+        <h1>A股量化研究平台 · 运行控制台</h1>
+        <div class="sub">research-only · 中低频多因子＋趋势 · 数据来自真实产物，不提供投资建议</div>
+      </div>
+    </div>
+    <div class="badges" id="badges"><span class="badge">正在连接数据服务…</span></div>
+  </header>
+
+  <div id="verdict" class="alert" style="display:none"></div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-p="overview">总览</button>
+    <button class="tab" data-p="equity">净值与回撤</button>
+    <button class="tab" data-p="factors">因子检验</button>
+    <button class="tab" data-p="overfit">过拟合四件套</button>
+    <button class="tab" data-p="gate">质量门</button>
+    <button class="tab" data-p="risk">风险定级</button>
+    <button class="tab" data-p="tasks">任务与接口</button>
+    <button class="tab" data-p="delivery">交付物</button>
+  </nav>
+
+  <section class="panel active" id="p-overview"><div class="loading">加载真实读数…</div></section>
+  <section class="panel" id="p-equity"></section>
+  <section class="panel" id="p-factors"></section>
+  <section class="panel" id="p-overfit"></section>
+  <section class="panel" id="p-gate"></section>
+  <section class="panel" id="p-risk"></section>
+  <section class="panel" id="p-tasks"></section>
+  <section class="panel" id="p-delivery"></section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script src="snapshot.js"></script>
+<script>
+(function(){
+  "use strict";
+  var API = "/quant/api/v1";
+  // 内网 Filer（8888）只做静态托管，无后端进程；直接走内联快照，避免无谓探测
+  var STATIC_ONLY = (location.port === "8888");
+  var S = window.__QUANT_SNAPSHOT__ || null;
+  var STATE = { online:false, rep:null, equity:[], opinions:null, tasks:[], fingerprint:"pending" };
+  var $ = function(id){ return document.getElementById(id); };
+
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function pct(x,d){ return x == null || isNaN(x) ? "—" : (x*100).toFixed(d==null?2:d)+"%"; }
+  function num(x,d){ return x == null || isNaN(x) ? "—" : Number(x).toFixed(d==null?4:d); }
+  function cls(x){ return x == null ? "" : (x>0 ? "up" : (x<0 ? "down" : "")); }
+  function tag(v){
+    var c = (v==="成立"||v==="通过"||v==="是"||v===true||v==="succeeded"||v==="ok") ? "ok"
+          : (v==="不成立"||v==="否"||v===false||v==="failed"||v==="不放行") ? "no"
+          : (v==="存疑"||v==="running"||v==="queued") ? "mid" : "info";
+    return '<span class="tag '+c+'">'+esc(v)+"</span>";
+  }
+  function kpi(k,v,n,c){ return '<div class="kpi"><div class="k">'+esc(k)+'</div><div class="v '+(c||"")+'">'+v+"</div>"+(n?'<div class="n">'+esc(n)+"</div>":"")+"</div>"; }
+  function card(title,desc,body){ return '<div class="card"><h2>'+esc(title)+'</h2>'+(desc?'<div class="desc">'+esc(desc)+"</div>":"")+body+"</div>"; }
+  function table(cols,rows){
+    var h = "<thead><tr>"+cols.map(function(c){ return "<th>"+esc(c)+"</th>"; }).join("")+"</tr></thead>";
+    var b = "<tbody>"+rows.map(function(r){ return "<tr>"+r.map(function(x){ return "<td>"+x+"</td>"; }).join("")+"</tr>"; }).join("")+"</tbody>";
+    return '<div class="tw"><table>'+h+b+"</table></div>";
+  }
+  function timeoutFetch(url,opt,ms){
+    return new Promise(function(resolve,reject){
+      var done=false;
+      var timer=setTimeout(function(){ if(!done){done=true;reject(new Error("timeout"));} },ms||2500);
+      fetch(url,opt||{}).then(function(r){ if(!done){done=true;clearTimeout(timer);resolve(r);} },
+                              function(e){ if(!done){done=true;clearTimeout(timer);reject(e);} });
+    });
+  }
+  function api(path,opt){
+    return timeoutFetch(API+path,opt,8000).then(function(r){ return r.json(); });
+  }
+
+  // ---------- 数据装载：在线优先，失败回退到内联真实快照 ----------
+  function loadOffline(){
+    if(!S || !S.result) throw new Error("数据服务不可达且缺少内联快照");
+    STATE.rep = S.result;
+    STATE.equity = S.equity || [];
+    STATE.opinions = S.opinions || {opinions:[],verdict:""};
+    STATE.tasks = [];
+    STATE.fingerprint = S.fingerprint || "pending";
+  }
+
+  function boot(){
+    if(STATIC_ONLY){
+      return Promise.resolve().then(function(){ STATE.online=false; loadOffline(); })
+        .then(afterLoad).catch(function(e){
+          $("p-overview").innerHTML='<div class="card"><div class="err">数据装载失败：'+esc(e.message)+"</div></div>";
+        });
+    }
+    return timeoutFetch(API+"/health",{},1800).then(function(r){
+      if(!r.ok) throw new Error("health not ok");
+      STATE.online=true;
+      return Promise.all([ api("/runs/v3-current/result"), api("/runs/v3-current/equity"),
+                           api("/audit/v3-current/opinions"), api("/agents/tasks") ]);
+    }).then(function(all){
+      STATE.rep = all[0].data.result;
+      STATE.equity = all[1].data.series || [];
+      STATE.opinions = all[2].data;
+      STATE.tasks = all[3].data.tasks || [];
+      STATE.fingerprint = all[0].metric_fingerprint || STATE.fingerprint;
+    }).catch(function(){
+      STATE.online=false;
+      loadOffline();
+    }).then(afterLoad).catch(function(e){
+      $("p-overview").innerHTML='<div class="card"><div class="err">数据装载失败：'+esc(e.message)+"</div></div>";
+    });
+  }
+
+  function afterLoad(){
+    var meta=document.querySelector('meta[name="metric-fingerprint"]');
+    if(meta) meta.setAttribute("content",STATE.fingerprint);
+    render();
+  }
+
+  function render(){
+    var rep=STATE.rep, p=rep.performance||{}, q=rep.quality_gate||{};
+    $("badges").innerHTML =
+      '<span class="badge '+(STATE.online?"online":"offline")+'">'+(STATE.online?"● 在线服务":"● 离线只读快照")+"</span>"+
+      '<span class="badge mono">指纹 '+esc(STATE.fingerprint)+"</span>"+
+      '<span class="badge">'+esc(rep.meta && rep.meta.generated_at || "—")+"</span>"+
+      '<span class="badge">'+esc(rep.meta && rep.meta.sample ? rep.meta.sample.codes+" 只 / "+rep.meta.sample.dates+" 日" : "")+"</span>";
+
+    $("verdict").style.display="flex";
+    $("verdict").innerHTML='<span class="pill">策略结论 '+esc(q.final_verdict||"—")+'</span>'+
+      '<div><b>质量门裁决：工程 '+esc(q.engineering_gate||"—")+' / 策略 '+esc(q.strategy_conclusion_gate||"—")+'</b><br>'+
+      esc(rep.one_line_conclusion||"")+'<br><span style="font-size:12px">硬否决项：'+esc((q.hard_fail_items||[]).join("、"))+"</span></div>";
+
+    renderOverview(); renderEquity(); renderFactors(); renderOverfit();
+    renderGate(); renderRisk(); renderTasks(); renderDelivery();
+    $("footer").innerHTML="<b>合规声明</b><br>"+(rep.compliance||[]).map(esc).join("<br>")+
+      "<br>颜色约定："+esc(rep.color_convention||"红涨绿跌")+"；本系统为 research-only，不含实盘下单、券商接口与自动交易循环。";
+  }
+
+  function renderOverview(){
+    var rep=STATE.rep,p=rep.performance||{},q=rep.quality_gate||{};
+    var k = '<div class="grid">'+
+      kpi("总收益",pct(p.total_return),null,cls(p.total_return))+
+      kpi("年化收益",pct(p.annualized_return),null,cls(p.annualized_return))+
+      kpi("夏普比率",num(p.sharpe),null,"")+
+      kpi("最大回撤",pct(p.max_drawdown),null,cls(p.max_drawdown))+
+      kpi("卡玛比率",num(p.calmar),null,"")+
+      kpi("年化波动",pct(p.annualized_vol),null,"")+
+      kpi("峰度",num(p.kurtosis,2),"尾部风险","")+
+      kpi("月度胜率",pct(p.monthly_win_rate),null,"")+
+      " </div>";
+    var d = card("核心绩效","来源：output/result.json → performance，全部为本次真实运行读数",k);
+    var s = rep.meta && rep.meta.sample || {};
+    var d2 = card("样本与约束","",'<div class="grid">'+
+      kpi("交易日期",esc(s.start||"—")+" ~ "+esc(s.end||"—"),esc(s.dates)+" 个交易日","")+
+      kpi("样本标的",esc(s.codes)+" 只","演示样本，非全 A","")+
+      kpi("入模 bar",esc(s.bars),"覆盖率 "+pct(s.coverage,2),"")+
+      kpi("成交笔数",esc(p.n_trades),"被拒 "+esc(p.blocked_orders)+" 笔","")+
+      kpi("总成本","¥"+Number(p.cost_total_cny||0).toLocaleString("zh-CN",{maximumFractionDigits:2}),"占毛收益 "+pct(p.cost_share_of_gross),"")+
+      kpi("最低现金","¥"+Number(p.cash_min_cny||0).toLocaleString("zh-CN"),"≥0，纯多头无杠杆","")+
+      kpi("最大敞口",num(p.max_position_exposure,4),"≤1.0","")+
+      kpi("未成交挂单",esc(p.unfilled_orders),"已在下期目标重试","")+"</div>");
+    var hard=(q.hard_fail_items||[]).map(function(x){return "<li>"+esc(x)+"</li>";}).join("");
+    var counts=q.counts||{};
+    var d3=card("质量门摘要","唯一放行出口：report.py::quality_gate()",
+      '<div class="row" style="margin-bottom:10px">'+tag(q.final_verdict)+
+      "<span class=\"hint\">成立 "+esc(counts["成立"]||0)+" / 不成立 "+esc(counts["不成立"]||0)+" / 存疑 "+esc(counts["存疑"]||0)+"</span></div>"+
+      "<b style=\"font-size:12.5px\">4 条硬否决：</b><ul class=\"clean\">"+hard+"</ul>");
+    $("p-overview").innerHTML=d+d2+d3;
+  }
+
+  function renderEquity(){
+    var s=STATE.equity||[];
+    if(!s.length){ $("p-equity").innerHTML=card("净值曲线","","<div class=err>无净值序列</div>"); return; }
+    var W=1100,H=300,PAD=42;
+    var vals=s.map(function(x){return x.equity;});
+    var lo=Math.min.apply(null,vals), hi=Math.max.apply(null,vals);
+    var span=(hi-lo)||1, pad=span*0.08; lo-=pad; hi+=pad;
+    var xs=function(i){ return PAD+i*(W-2*PAD)/(s.length-1); };
+    var ys=function(v){ return H-PAD-(v-lo)/(hi-lo)*(H-2*PAD); };
+    var line=s.map(function(x,i){return (i?"L":"M")+xs(i).toFixed(1)+","+ys(x.equity).toFixed(1);}).join(" ");
+    var base=ys(s[0].equity);
+    var peak=s[0].equity, dd=[];
+    s.forEach(function(x){ peak=Math.max(peak,x.equity); dd.push(x.equity/peak-1); });
+    var dmin=Math.min.apply(null,dd)||-1;
+    var dl=dd.map(function(v,i){return (i?"L":"M")+xs(i).toFixed(1)+","+(H-PAD-(v/dmin)*(H-2*PAD)*0.9).toFixed(1);}).join(" ");
+    var grid="";
+    for(var g=0;g<=4;g++){
+      var gy=PAD+g*(H-2*PAD)/4, label=hi-(hi-lo)*g/4;
+      grid+='<line x1="'+PAD+'" y1="'+gy+'" x2="'+(W-PAD)+'" y2="'+gy+'" stroke="#e3e7ec" stroke-width="1"/>'+
+           '<text x="6" y="'+(gy+4)+'" font-size="10" fill="#8492a3">'+(label/10000).toFixed(0)+"万</text>";
+    }
+    var svg='<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="净值曲线">'+
+      grid+'<path d="'+line+'" fill="none" stroke="#c62828" stroke-width="1.8"/>'+
+      '<line x1="'+PAD+'" y1="'+base+'" x2="'+(W-PAD)+'" y2="'+base+'" stroke="#8492a3" stroke-dasharray="4 4" stroke-width="1"/>'+
+      '<text x="'+(PAD+6)+'" y="'+(PAD+2)+'" font-size="11" fill="#4a5768">'+esc(s[0].date)+" 起 · 初始 ¥"+Number(s[0].equity).toLocaleString("zh-CN")+"</text>"+
+      '<text x="'+(W-PAD-6)+'" y="'+(PAD+2)+'" font-size="11" text-anchor="end" fill="#4a5768">'+esc(s[s.length-1].date)+"</text></svg>";
+    var svg2='<svg class="chart" viewBox="0 0 '+W+' 180" preserveAspectRatio="none" role="img" aria-label="回撤曲线">'+
+      '<line x1="'+PAD+'" y1="'+(180-PAD)+'" x2="'+(W-PAD)+'" y2="'+(180-PAD)+'" stroke="#e3e7ec"/>'+
+      '<path d="'+dl+'" fill="none" stroke="#1b7a4b" stroke-width="1.5"/>'+
+      '<text x="6" y="24" font-size="10" fill="#8492a3">回撤 '+pct(dmin)+"</text></svg>";
+    $("p-equity").innerHTML=card("净值曲线","红=上涨，绿=回撤；"+s.length+" 个采样点（由 output/equity.csv 等距降采样）",
+      svg+'<div class="legend"><span><i style="background:#c62828"></i>组合净值</span><span><i style="background:#8492a3"></i>初始资金基准</span></div>')+
+      card("历史回撤","峰值口径按全样本累计峰值计算",svg2+
+        '<div class="legend"><span><i style="background:#1b7a4b"></i>相对历史峰值回撤</span><span>最大 '+esc(pct(STATE.rep.performance.max_drawdown))+"</span></div>");
+  }
+
+  function renderFactors(){
+    var f=STATE.rep.factor_research||{}, pf=f.per_factor||{}, ci=f.composite_ic||{}, mt=f.multiple_testing||{};
+    var body=Object.keys(pf).map(function(k){
+      var v=pf[k];
+      return "<tr><td><b>"+esc(k)+"</b></td>"+
+        '<td class="num '+cls(v.ic_mean)+'">'+num(v.ic_mean)+"</td>"+
+        '<td class="num">'+num(v.icir)+"</td>"+
+        '<td class="num">'+num(v.t_stat)+"</td>"+
+        '<td class="num">'+num(v.t_stat_iid)+"</td>"+
+        '<td class="num">'+num(v.p_value)+"</td>"+
+        '<td class="num">'+pct(v.positive_ratio)+"</td>"+
+        '<td class="num">'+esc(v.hac_lags)+"</td></tr>";
+    }).join("");
+    var t='<div class="tw"><table><thead><tr><th>因子</th><th>IC 均值</th><th>ICIR</th><th>HAC t</th><th>iid t（对照）</th><th>p 值</th><th>正 IC 占比</th><th>HAC lags</th></tr></thead><tbody>'+body+"</tbody></table></div>";
+    var c=card("单因子 IC 检验","20 日重叠前向收益；显著性用 Newey-West / Bartlett HAC，iid t 仅作对照",t);
+    var c2=card("合成得分与多重检验","",'<div class="grid">'+
+      kpi("合成 IC 均值",num(ci.ic_mean),null,cls(ci.ic_mean))+
+      kpi("HAC t",num(ci.t_stat),null,"")+
+      kpi("iid t",num(ci.t_stat_iid),"修正前虚高","")+
+      kpi("正 IC 占比",pct(ci.positive_ratio),null,"")+
+      kpi("FDR 检验数",esc(mt.n_tests||"—"),"最终保留因子","")+
+      kpi("尝试数（分母）",esc(mt.n_attempted||"—"),"与 DSR 同源","")+
+      kpi("校正后显著数",esc(mt.n_rejected||"—"),"BH-FDR","")+
+      kpi("FDR 阈值",num(mt.cutoff,6),"alpha="+esc(mt.alpha||"—"),"")+"</div>");
+    var note=(f.config_wiring||{});
+    var c3=card("因子配置接线审计","预注册方向全部为 +1，禁止据样本反号",
+      "<ul class=\"clean\">"+Object.keys(note).map(function(k){return "<li><b>"+esc(k)+"</b>："+esc(JSON.stringify(note[k]))+"</li>";}).join("")+"</ul>");
+    $("p-factors").innerHTML=c+c2+c3;
+  }
+
+  function renderOverfit(){
+    var o=STATE.rep.overfit||{}, s=o.suite||{};
+    var oos=s["1_out_of_sample"]||{}, ps=s["2_parameter_sensitivity"]||{},
+        mc=s["3_monte_carlo_deflated_sharpe"]||{}, cs=s["4_cost_sensitivity"]||{};
+    var dsr=mc.deflated_sharpe||{};
+    var c1=card("① 样本外检验 + 预注册计数","",'<div class="grid">'+
+      kpi("切分日",esc(oos.split_date||"—"),"","")+
+      kpi("样本内夏普",num((oos.in_sample||{}).sharpe),"","")+
+      kpi("样本外夏普",num((oos.out_of_sample||{}).sharpe),"","")+
+      kpi("样本外使用次数",esc(oos.oos_use_count||"—"),"上限 "+esc(oos.oos_max_uses||"—"),"")+"</div>"+
+      '<div class="hint" style="margin-top:10px">'+esc(oos.note||"")+"</div>");
+    var c2=card("② 参数敏感性 · 邻域共识","",'<div class="grid">'+
+      kpi("扰动组数",esc(ps.n_combos||"—"),Object.keys(ps.axes||{}).length+" 轴单轴扰动","")+
+      kpi("夏普极差",num(ps.sharpe_spread),"","")+
+      kpi("区间共识夏普",num(ps.consensus_sharpe),"","")+
+      kpi("点估计偏离",num(ps.point_minus_consensus),"","")+
+      kpi("悬崖式衰减",esc(ps.cliff_like_decay),"","")+
+      kpi("点估计可疑",esc(ps.point_estimate_suspicion),"","")+"</div>");
+    var c3=card("③ 等价随机对照 + Deflated Sharpe","完整复用同一权重函数与撮合引擎，真实重跑 "+esc(mc.n_paths||"—")+" 次",
+      '<div class="grid">'+
+      kpi("基准夏普",num(mc.baseline_sharpe),"","")+
+      kpi("随机夏普均值",num(mc.random_sharpe_mean),"","")+
+      kpi("随机 95 分位",num(mc.random_sharpe_p95),"","")+
+      kpi("基准分位",pct(mc.baseline_percentile,1),"","")+
+      kpi("显著优于随机",esc(mc.significantly_better_than_random),"","")+
+      kpi("等价性断言",esc(mc.control_equivalence),"","")+
+      kpi("Deflated Sharpe",num(dsr.dsr,6),"试验数 "+esc(dsr.n_trials||"—"),"")+
+      kpi("净值最大偏差",num((mc.equivalence_evidence||{}).max_abs_equity_diff,6),"","")+"</div>"+
+      '<div class="hint" style="margin-top:10px">'+esc(mc.note||"")+"</div>");
+    var csrows=(cs.rows||[]).map(function(r){
+      return "<tr><td class=\"num\">"+num(r.multiplier,1)+"×</td>"+
+        '<td class="num '+cls(r.total_return)+'">'+pct(r.total_return)+"</td>"+
+        '<td class="num">'+pct(r.annualized_return)+"</td>"+
+        '<td class="num">¥'+Number(r.cost_total_cny||0).toLocaleString("zh-CN",{maximumFractionDigits:2})+"</td></tr>";
+    }).join("");
+    var c4=card("④ 成本敏感性","成本倍数 ×1 / ×1.5 / ×2 / ×3",
+      '<div class="tw"><table><thead><tr><th>成本倍数</th><th>总收益</th><th>年化收益</th><th>总成本</th></tr></thead><tbody>'+csrows+"</tbody></table></div>"+
+      '<div class="hint" style="margin-top:8px">收益归零档：'+esc(cs.return_hits_zero_at||"—")+"</div>");
+    $("p-overfit").innerHTML=c1+c2+c3+c4+
+      card("四件套完整性","",'<div class="row">'+tag(o.complete)+"<span class=\"hint\">缺任一项或关键字段无效，质量门不得放行策略级结论</span></div>");
+  }
+
+  function renderGate(){
+    var q=STATE.rep.quality_gate||{}, items=q.items||[];
+    var body=items.map(function(x,i){
+      return "<tr><td class=\"num\">"+(i+1)+"</td><td><b>"+esc(x.ITEM)+"</b></td><td>"+tag(x.VERDICT)+"</td><td>"+esc(x.EVIDENCE)+"</td><td>"+esc(x.NOTE||"")+"</td></tr>";
+    }).join("");
+    var t='<div class="tw"><table><thead><tr><th>#</th><th>判据</th><th>VERDICT</th><th>证据</th><th>备注</th></tr></thead><tbody>'+body+"</tbody></table></div>";
+    var f=(q.followups||[]).map(function(x,i){return "<li><b>"+(i+1)+".</b> "+esc(x)+"</li>";}).join("");
+    $("p-gate").innerHTML=card("质量门逐条裁决","共 "+items.length+" 项；两票与 final 由逐条 VERDICT、进程内自检与真实读数推导",t)+
+      card("未决跟进事项","外部依赖或新研究假设，未用占位值伪造","<ul class=\"clean\">"+f+"</ul>")+
+      card("结论","",'<div class="row">'+tag(q.final_verdict)+tag(q.engineering_gate)+tag(q.strategy_conclusion_gate)+"</div>"+
+        '<div class="hint" style="margin-top:10px">'+esc(q.note||"")+"</div>");
+  }
+
+  function renderRisk(){
+    var r=STATE.rep.risk_elements||[];
+    var body=r.map(function(x,i){
+      return "<tr><td class=\"num\">"+(i+1)+"</td><td><b>"+esc(x.item)+"</b></td><td>"+tag(x.level)+"</td><td>"+esc(x.confidence)+"</td><td>"+esc(x.reading)+"</td><td>"+esc(x.tradeoff||"")+"</td><td>"+esc(x.if_risk||"")+"</td></tr>";
+    }).join("");
+    var t='<div class="tw"><table><thead><tr><th>#</th><th>风险项</th><th>级别</th><th>置信度</th><th>实测读数</th><th>取舍</th><th>IF_RISK 契约</th></tr></thead><tbody>'+body+"</tbody></table></div>";
+    var b=STATE.rep.risk&&STATE.rep.risk.beta||{}, cap=STATE.rep.risk&&STATE.rep.risk.capacity||{};
+    $("p-risk").innerHTML=card("风险定级表","共 "+r.length+" 项；历史情景为事实，假设情景为模型估计",t)+
+      card("系统性与容量","",'<div class="grid">'+
+      kpi("Beta",num(b.beta),"R² "+num(b.r_squared),"")+
+      kpi("容量评估",esc(cap.status||"—"),"capital=null，未输入资金规模","")+"</div>"+
+      '<div class="hint" style="margin-top:10px">'+esc(cap.note||"")+"</div>");
+  }
+
+  function renderTasks(){
+    var online=STATE.online;
+    var btn=function(k,label){ return '<button class="act" data-task="'+k+'" '+(online?"":"disabled")+'>'+esc(label)+"</button>"; };
+    var h=card("真实复现任务","点击后由服务端真实执行 quantlab 命令行；每次提交带 Idempotency-Key（幂等键）",
+      '<div class="row">'+btn("selftest","运行 25 项单测")+btn("verify","运行一致性校验")+
+      btn("contracts","校验架构契约")+btn("run","重跑完整回测（约 3 分钟）")+
+      '<button class="act ghost" data-task="refresh">刷新任务状态</button></div>'+
+      '<div class="hint" style="margin-top:10px">'+(online?"在线服务已连接：/quant/api/v1":"离线只读快照模式：内网静态托管无后端进程，任务触发不可用；本机启动服务后可用")+"</div>");
+    var rows=(STATE.tasks||[]).slice().reverse().map(function(t){
+      return "<tr><td>"+esc(t.task_id)+"</td><td>"+esc(t.kind)+"</td><td>"+tag(t.status)+"</td><td>"+esc(t.exit_code==null?"—":t.exit_code)+"</td><td>"+esc(t.created_at||"—")+"</td></tr>";
+    }).join("");
+    var t=card("任务队列","",'<div class="tw"><table><thead><tr><th>任务 ID</th><th>类型</th><th>状态</th><th>退出码</th><th>创建时间</th></tr></thead><tbody>'+rows+"</tbody></table></div>"+
+      '<pre class="log" id="tasklog" style="margin-top:12px">'+(online?"等待任务…":"离线模式：无任务日志")+"</pre>");
+    var ops=(STATE.opinions&&STATE.opinions.opinions||[]);
+    var a=card("专家团审核意见","来源："+esc(STATE.opinions&&STATE.opinions.source||"docs/AUDIT_PANEL.md"),
+      '<div class="tw"><table><thead><tr><th>委员</th><th>Agent ID</th><th>工程票</th><th>策略票</th><th>核心立场</th></tr></thead><tbody>'+
+      ops.map(function(x){return "<tr><td><b>"+esc(x.committee)+"</b></td><td>"+esc(x.agent_id)+"</td><td>"+esc(x.engineering_vote)+"</td><td>"+esc(x.strategy_vote)+"</td><td>"+esc(x.stance)+"</td></tr>";}).join("")+"</tbody></table></div>"+
+      '<div class="hint" style="margin-top:8px">'+esc(STATE.opinions&&STATE.opinions.verdict||"")+"</div>");
+    $("p-tasks").innerHTML=h+t+a;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-task]"),function(b){
+      b.addEventListener("click",function(){
+        var k=b.getAttribute("data-task");
+        if(k==="refresh"){ refreshTasks(); return; }
+        submitTask(k,b);
+      });
+    });
+  }
+
+  function refreshTasks(){
+    if(!STATE.online) return;
+    api("/agents/tasks").then(function(r){
+      STATE.tasks=r.data.tasks||[];
+      var body=STATE.tasks.slice().reverse().map(function(t){
+        return "<tr><td>"+esc(t.task_id)+"</td><td>"+esc(t.kind)+"</td><td>"+tag(t.status)+"</td><td>"+esc(t.exit_code==null?"—":t.exit_code)+"</td><td>"+esc(t.created_at||"—")+"</td></tr>";
+      }).join("");
+      var tb=document.querySelector("#p-tasks .tw:nth-of-type(1) tbody");
+      if(tb) tb.innerHTML=body;
+    });
+  }
+
+  function submitTask(kind,btn){
+    var log=$("tasklog");
+    if(!log) return;
+    btn.disabled=true;
+    log.textContent="提交任务 "+kind+" …";
+    var key=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("kb-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+    api("/runs",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":key},
+                 body:JSON.stringify({kind:kind})}).then(function(r){
+      if(!r.ok){ throw new Error((r.error&&r.error.code||"ERROR")+": "+(r.error&&r.error.message||"")); }
+      var id=r.data.run.task_id;
+      log.textContent="任务已受理："+id+"\n命令："+(r.data.run.command||"")+"\n状态：queued";
+      var n=0, max=kind==="run"?240:80;
+      var timer=setInterval(function(){
+        n++;
+        api("/runs/"+id+"/status").then(function(s){
+          var st=s.data;
+          log.textContent="任务 "+id+"\n状态："+st.status+"\n退出码："+(st.exit_code==null?"—":st.exit_code)+
+            "\n\n"+(st.log_tail||"（执行中，暂无输出）");
+          if(st.status==="succeeded"||st.status==="failed"||n>=max){
+            clearInterval(timer); btn.disabled=false; refreshTasks();
+          }
+        }).catch(function(e){ clearInterval(timer); btn.disabled=false; log.textContent+="\n查询失败："+e.message; });
+      },1500);
+    }).catch(function(e){
+      btn.disabled=false;
+      log.textContent="提交失败："+e.message;
+    });
+  }
+
+  function renderDelivery(){
+    var links=[
+      ["验收页（内网）","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html"],
+      ["设计报告","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-design-report.html"],
+      ["专家团审核报告","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-audit-report.html"],
+      ["平台技术架构","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/PLATFORM_ARCHITECTURE.md"],
+      ["接口契约 openapi.yaml","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/openapi.yaml"],
+      ["数据库 DDL","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/schema.sql"],
+      ["哈希清单","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/MANIFEST.json"],
+      ["工程源码包","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz"],
+      ["技能包","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-designer.zip"],
+      ["GitHub 仓库","https://github.com/laohuang5558/astock-quant-lab"]
+    ];
+    var t=table(["交付物","地址"],links.map(function(x){
+      return [esc(x[0]),'<a href="'+esc(x[1])+'" target="_blank" rel="noopener">'+esc(x[1])+"</a>"];
+    }));
+    var cmds=["python -m quantlab selftest","python -m quantlab run","python -m quantlab verify --render",
+              "python scripts/validate_contracts.py","python apps/api/server.py","python deploy/deliver.py"];
+    $("p-delivery").innerHTML=card("交付物与直链","内网 192.168.2.203:8888 静态托管；全部文件已做 SHA-256 回读校验",t)+
+      card("本地复现命令","解包工程源码包后在项目根目录执行",
+        '<pre class="log">'+cmds.map(esc).join("\n")+"</pre>");
+  }
+
+  // tab 切换
+  $("tabs").addEventListener("click",function(e){
+    var b=e.target.closest(".tab"); if(!b) return;
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(x){x.classList.remove("active");});
+    Array.prototype.forEach.call(document.querySelectorAll(".panel"),function(x){x.classList.remove("active");});
+    b.classList.add("active");
+    var p=$("p-"+b.getAttribute("data-p")); if(p) p.classList.add("active");
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>

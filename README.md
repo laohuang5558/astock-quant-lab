@@ -9,8 +9,13 @@
 
 ## 快速开始
 
+**想要一个能打开操作的系统？** 见 [docs/RUNNING.md](docs/RUNNING.md)：执行
+`python scripts/build_web_snapshot.py && python apps/api/server.py`，
+浏览器打开 `http://127.0.0.1:8000/` 即为 8 面板可交互控制台；
+内网静态版在 `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/`（零依赖，离线只读）。
+
 ```bash
-pip install -r requirements.txt          # pandas / numpy，仅此两项
+pip install -r requirements.txt          # pandas / numpy / PyYAML / Flask
 
 python -m quantlab fetch                 # 抓取 20 只真实 A 股前复权日线 (2018-01-01 ~ 2026-11-13)
 python -m quantlab fetch --adjust none --out data/sample_real/prices_raw.csv  # 未复权价（涨跌停基准）
@@ -31,10 +36,12 @@ python -m quantlab verify --render       # 交付前一致性校验（数值指�
 | `equity.csv` / `trades.csv` | 逐日净值 / 逐笔成交（含被涨跌停、停牌、T+1 阻断的订单） |
 | `verify.json` | 一致性校验结果（指纹、漂移清单） |
 | `result_v1_pre_audit.json` / `result_v2_post_audit.json` | 审核前 / 审核整改后的固定基线存档 |
+| `api_smoke.json` / `web_render_check.json` | 平台接口冒烟 / 前端双路径渲染校验结果 |
 
 报告重建与 CI：`scripts/build_design_report.py`、`scripts/build_audit_report.py`、
-`scripts/check_inline_js.py`；`.github/workflows/ci.yml` 会在每次推送自动跑
-`selftest → run → 报告重建 → node --check → verify`。
+`scripts/check_inline_js.py`、`scripts/smoke_api.py`、`scripts/validate_web_render.js`；
+`.github/workflows/ci.yml` 会在每次推送自动跑
+`selftest → run → 报告重建 → node --check → verify → 快照重建 → 接口冒烟 → 前端渲染校验`。
 关键数值由 `docs/metrics.md` 自动渲染，禁止手工转录。
 
 自定义配置：`python -m quantlab run --config config/my.json --data data/my.csv --out output/run2/`

@@ -33,6 +33,7 @@ CT = {
     ".yaml": "text/yaml; charset=utf-8",
     ".sql": "text/plain; charset=utf-8",
     ".json": "application/json; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
     ".zip": "application/zip",
     ".gz": "application/gzip",
     ".txt": "text/plain; charset=utf-8",
@@ -104,6 +105,8 @@ def load_context() -> dict:
         "mc_percentile": result["overfit"]["suite"]["3_monte_carlo_deflated_sharpe"]["baseline_percentile"],
         "mc_paths": result["overfit"]["suite"]["3_monte_carlo_deflated_sharpe"]["n_paths"],
         "selftest": result["audit"]["selftest"]["tests_run"],
+        "api_smoke_passed": (ROOT / "output" / "api_smoke.json").exists(),
+        "web_render_passed": (ROOT / "output" / "web_render_check.json").exists(),
     }
 
 
@@ -157,6 +160,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 
 <h2>三、核心验收入口</h2>
 <div class="card"><ul>
+<li><strong><a href="app/index.html">运行中的系统控制台（可交互，8 个面板）</a></strong> —— 静态离线版，零 CDN、零数据库；本机完整版见 <code>docs/RUNNING.md</code></li>
 <li><a href="astock-quant-design-report.html">可视化设计报告（ECharts，含指纹）</a></li>
 <li><a href="astock-quant-audit-report.html">专家团联合审核报告</a></li>
 <li><a href="PLATFORM_ARCHITECTURE.md">平台化技术架构（前后端 / 数据库 / 智能体编排 / 接口契约 / 目录 / 里程碑）</a></li>
@@ -175,6 +179,15 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <tr><td>最低现金 / 最大敞口</td><td>{ctx['cash_min']} / {ctx['exposure_max']}</td><td>纯多头无杠杆硬约束</td></tr>
 <tr><td>等价随机对照</td><td>{ctx['mc_paths']} 次真实引擎重跑</td><td>基准分位 {ctx['mc_percentile']}，未显著优于随机</td></tr>
 </table></div>
+
+<h2>五、系统运行状态</h2>
+<div class="card"><ul>
+<li><strong><a href="app/index.html">打开系统控制台</a></strong>：8 个可交互面板（总览 / 净值与回撤 / 因子检验 / 过拟合四件套 / 质量门 / 风险定级 / 任务与接口 / 交付物），数值指纹与 <code>result.json</code> 绑定。</li>
+<li>本页为<strong>静态离线版</strong>：零 CDN、零数据库、零后端进程，浏览器直接运行；页面会显示「离线只读快照」标识，任务触发按钮禁用并说明原因。</li>
+<li><strong>本机完整版</strong>按 <a href="RUNNING.md">RUNNING.md</a> 启动 <code>python apps/api/server.py</code> 后访问 <code>http://127.0.0.1:8000/</code>，可真实触发单测、一致性校验、契约校验与完整回测；接口前缀 <code>/quant/api/v1</code> 与 <a href="openapi.yaml">OpenAPI 契约</a> 一致。</li>
+<li>校验证据：<a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（32 项）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验（16 项）</a>。</li>
+<li>实现栈取舍：目标栈 FastAPI + Vue 3；当前 MVP 用 Flask + 原生 JS 实现同一接口契约，接口与前端数据模型不变，替换实现栈不影响契约。内网服务器无可用的 Python 执行通道与数据库账号，故暂不接线 <a href="schema.sql">DDL</a>。</li>
+</ul></div>
 
 <div class="foot">合规：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。
 回测结果不等于实盘表现，历史业绩不代表未来。本页为静态验收页，勾选状态仅保存在当前浏览器页面内。</div>
@@ -201,6 +214,13 @@ def main() -> int:
         ("contracts_check.json", ROOT / "output" / "contracts_check.json"),
         ("verify.json", ROOT / "output" / "verify.json"),
         ("README.md", ROOT / "README.md"),
+        ("RUNNING.md", ROOT / "docs" / "RUNNING.md"),
+        ("api_smoke.json", ROOT / "output" / "api_smoke.json"),
+        ("web_render_check.json", ROOT / "output" / "web_render_check.json"),
+        ("web_render_remote_check.json", ROOT / "output" / "web_render_remote_check.json"),
+        # 可运行的静态系统（零依赖，Filer 子目录直接托管）
+        ("app/index.html", ROOT / "apps" / "web" / "index.html"),
+        ("app/snapshot.js", ROOT / "apps" / "web" / "snapshot.js"),
     ]
 
     checks = [
@@ -217,6 +237,10 @@ def main() -> int:
         f"接口契约 OpenAPI 3.1 可解析，{ctx['api_paths']} 条路径 / {ctx['api_operations']} 个操作 / {ctx['api_refs']} 处引用全部可解析",
         f"数据库 DDL：{ctx['ddl_tables']} 张表、pgvector(512)、现金/敞口 CHECK、HNSW 索引齐备",
         "交付物 sha256 与 MANIFEST.json 逐项一致，且每个 URL 已回读校验",
+        "可运行系统：app/index.html 控制台 8 个面板可打开，离线快照读数与 result.json 一致",
+        "后端接口冒烟 41/41 通过（含真实执行 25 项单测、幂等键、冻结保护）",
+        "前端在线 + 离线双路径渲染校验通过（8 面板，关键读数与指纹一致）",
+        "本机完整版启动命令见 RUNNING.md：python apps/api/server.py，端口 8000",
         "合规：research-only，无实盘下单与荐股内容",
     ]
 
@@ -279,6 +303,10 @@ def main() -> int:
         "python -m quantlab run",
         "python -m quantlab verify --render",
         "python scripts/validate_contracts.py",
+        "python scripts/build_web_snapshot.py",
+        "python apps/api/server.py   # 浏览器打开 http://127.0.0.1:8000/",
+        "python scripts/smoke_api.py",
+        "node scripts/validate_web_render.js",
         "```", "",
         "**合规**：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。", "",
     ])

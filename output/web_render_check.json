@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "base": "http://127.0.0.1:8000",
+  "source": null,
+  "checks": 32,
+  "failed": 0,
+  "modes": [
+    {
+      "mode": "online",
+      "panels": 8,
+      "htmlChars": 53844
+    },
+    {
+      "mode": "offline",
+      "panels": 8,
+      "htmlChars": 53490
+    }
+  ]
+}

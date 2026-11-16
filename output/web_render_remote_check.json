@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "base": "http://192.168.2.203:8888",
+  "source": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app",
+  "checks": 16,
+  "failed": 0,
+  "modes": [
+    {
+      "mode": "offline",
+      "panels": 8,
+      "htmlChars": 53490
+    }
+  ]
+}

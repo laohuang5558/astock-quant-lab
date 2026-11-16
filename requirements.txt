@@ -4,3 +4,5 @@ pandas>=2.0
 numpy>=1.24
 # 仅用于 scripts/validate_contracts.py 解析 contracts/openapi.yaml，引擎运行不需要
 PyYAML>=6.0
+# 仅用于 apps/api/server.py 平台化 Web 服务；quantlab 引擎本身零 Web 依赖
+Flask>=3.0
