@@ -1,0 +1,4 @@
+# AStock Quant Lab - runtime dependencies
+# 核心引擎仅需以下三项；无 scipy / sklearn / 券商接口 / 实盘下单依赖
+pandas>=2.0
+numpy>=1.24

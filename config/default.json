@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0",
+  "project": "A股中低频多因子＋趋势策略研究框架 (astock-quant-lab)",
+  "step0": {
+    "locked_by_user": true,
+    "universe": "全A股（剔除ST / 退市 / 上市不足120日）；随仓库附带的演示样本为20只真实A股，不是全A",
+    "frequency": "日频计算信号 + 月末调仓（中低频）",
+    "capital": null,
+    "capacity": "仅研究、不设规模；参与率与冲击成本为占位符，本次不输出容量结论",
+    "period": { "start": "2018-01-01", "end": "2026-11-13", "oos_start": "2024-01-01" },
+    "cost_assumption": "佣金万2.5双边(最低¥5) + 印花税千1仅卖出 + 滑点5bp + T+1 + 不建模冲击",
+    "leverage": "纯多头、无杠杆、不做空"
+  },
+  "universe": {
+    "exclude_st": true,
+    "exclude_suspended": true,
+    "min_listed_days": 120,
+    "min_avg_amount_20d": 0
+  },
+  "period": { "start": "2018-01-01", "end": "2026-11-13", "oos_start": "2024-01-01" },
+  "cost": {
+    "commission_bps": 2.5,
+    "commission_min_cny": 5.0,
+    "stamp_tax_sell_bps": 10.0,
+    "slippage_bps": 5.0,
+    "impact_model": "none"
+  },
+  "leverage": { "enabled": false, "max": 1.0, "short": false },
+  "factors": {
+    "enabled": ["mom_60", "mom_120", "rev_5", "low_vol_20", "liq_20", "illiq_20"],
+    "weights": {
+      "mom_60": 0.25,
+      "mom_120": 0.15,
+      "rev_5": 0.15,
+      "low_vol_20": 0.15,
+      "liq_20": 0.15,
+      "illiq_20": 0.15
+    },
+    "winsor": "mad3",
+    "standardize": "rank_zscore",
+    "neutralize": "industry_optional",
+    "nan_policy": "drop_cross_section",
+    "min_cross_section": 5,
+    "fundamental_plugin": "未启用：EP/BP/ROE 需要带 publish_date 的 PIT 财务数据，当前数据源不覆盖"
+  },
+  "strategy": {
+    "top_n": 8,
+    "rebalance": "month_end",
+    "buffer_multiple": 1.5,
+    "max_weight": 0.20,
+    "max_industry_weight": 0.40,
+    "max_turnover_per_rebalance": 0.60,
+    "trend": {
+      "ma_short": 60,
+      "ma_long": 120,
+      "require_close_above_ma_short": true,
+      "require_ma_short_above_ma_long": true
+    },
+    "market_timing": {
+      "proxy": "equal_weight_sample",
+      "ma_window": 200,
+      "below_ma_exposure": 0.50
+    }
+  },
+  "risk": {
+    "dd_fuse_levels": [
+      { "dd": 0.15, "exposure": 0.50 },
+      { "dd": 0.20, "exposure": 0.00 }
+    ],
+    "recovery_dd": 0.08,
+    "var_conf": [0.95, 0.99],
+    "var_method": "historical",
+    "max_single_weight": 0.20,
+    "max_industry_weight": 0.40
+  },
+  "validation": {
+    "research_capital_cny": 1000000,
+    "research_capital_note": "仅记账单位，用于最低佣金与份额计算；用户选择『仅研究、不设规模』，不代表策略规模或容量结论",
+    "oos_use_count": 1,
+    "trials_factor_count": 6,
+    "trials_param_grid": 9,
+    "mc_paths": 200,
+    "cost_multipliers": [1.0, 1.5, 2.0, 3.0],
+    "sensitivity_grid": { "top_n": [5, 8, 12], "ma_long": [90, 120, 160] },
+    "fdr_alpha": 0.05
+  },
+  "data": {
+    "prices_csv": "data/sample_real/prices.csv",
+    "source": "腾讯证券前复权日线 web.ifzq.gtimg.cn；与通达信 MCP 逐日 OHLC 交叉校验",
+    "amount_proxy": "amount = volume(手) x 100 x (H+L+C)/3，为成交额近似值，非交易所真实成交额",
+    "known_gaps": [
+      "行业分类缺失（industry=UNKNOWN）→ 行业中性化与行业权重上限在本次样本中不生效",
+      "历史 ST 标记缺失 → ST 历史剔除无法回溯验证，登记为数据缺口",
+      "成分股历史变动 / 退市股缺失 → 全A回测存在幸存者偏差，演示样本不构成全A结论",
+      "PIT 财务数据缺失 → 价值与质量因子插件未启用"
+    ]
+  },
+  "output": { "dir": "output" }
+}
