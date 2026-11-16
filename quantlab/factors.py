@@ -118,18 +118,43 @@ def normal_two_sided_p(t: float) -> float:
     return math.erfc(abs(float(t)) / math.sqrt(2.0))
 
 
-def ic_stats(ic: pd.Series) -> dict:
+def _hac_t_stat(s: pd.Series, lags: int) -> float:
+    """Newey-West / Bartlett 核 HAC 均值 t 值。
+
+    IC 由 h 日重叠前向收益逐日计算，序列存在强自相关；iid 假设下的
+    t = mean/(std/sqrt(n)) 会系统性放大显著性（专家团审核发现 F02）。
+    lags 取重叠窗口长度，对 h=20 即 20 阶。
+    """
+    x = s.to_numpy(dtype=float)
+    n = len(x)
+    d = x - x.mean()
+    L = max(1, min(int(lags), n - 1))
+    var = float(np.dot(d, d) / n)
+    for lag in range(1, L + 1):
+        gamma = float(np.dot(d[lag:], d[:-lag]) / n)
+        var += 2.0 * (1.0 - lag / (L + 1.0)) * gamma
+    se = math.sqrt(max(var, 1e-18) / n)
+    return float(x.mean() / se) if se > 0 else float("nan")
+
+
+def ic_stats(ic: pd.Series, overlap_lags: int = 20) -> dict:
+    """IC 汇总。t/p 用 HAC（重叠窗口自相关稳健），并保留 iid t 作对照。"""
     s = ic.dropna()
     if len(s) < 2:
         return {"ic_mean": None, "ic_std": None, "icir": None, "t_stat": None,
-                "positive_ratio": None, "n_periods": int(len(s)), "p_value": None}
+                "positive_ratio": None, "n_periods": int(len(s)), "p_value": None,
+                "t_stat_iid": None, "hac_lags": int(overlap_lags), "method": "HAC(Bartlett)"}
     mean, std = float(s.mean()), float(s.std(ddof=1))
     icir = mean / std if std > 0 else float("nan")
-    t = mean / (std / math.sqrt(len(s))) if std > 0 else float("nan")
+    t_iid = mean / (std / math.sqrt(len(s))) if std > 0 else float("nan")
+    t = _hac_t_stat(s, overlap_lags)
     return {
         "ic_mean": round(mean, 6), "ic_std": round(std, 6),
         "icir": round(icir, 4) if np.isfinite(icir) else None,
         "t_stat": round(t, 4) if np.isfinite(t) else None,
+        "t_stat_iid": round(t_iid, 4) if np.isfinite(t_iid) else None,
+        "hac_lags": int(overlap_lags),
+        "method": "HAC(Bartlett)；重叠前向收益自相关稳健，iid t 另列对照",
         "p_value": round(normal_two_sided_p(t), 6) if np.isfinite(t) else None,
         "positive_ratio": round(float((s > 0).mean()), 4),
         "n_periods": int(len(s)),
@@ -165,25 +190,34 @@ def layered_backtest(factor: pd.DataFrame, fwd: pd.DataFrame, n_groups: int = 5)
     }
 
 
-def bh_fdr(pvalues, alpha: float = 0.05) -> dict:
-    """Benjamini-Hochberg FDR 校正，返回每条是否被拒绝。"""
+def bh_fdr(pvalues, alpha: float = 0.05, n_attempted: int | None = None) -> dict:
+    """Benjamini-Hochberg FDR 校正。
+
+    n_attempted 为实际尝试过的检验总数（含未进入最终报告的因子与参数组合）。
+    专家团审核发现 F03：分母若只用最终保留的 6 个 p 值，会严重低估校正强度；
+    DSR 已用 54 次试验，两套口径必须统一。
+    """
     p = np.asarray([x for x in pvalues if x is not None and np.isfinite(x)], dtype=float)
     n = len(p)
     if n == 0:
-        return {"n_tests": 0, "cutoff": 0.0, "n_rejected": 0, "alpha": alpha}
+        return {"n_tests": 0, "cutoff": 0.0, "n_rejected": 0, "alpha": alpha,
+                "n_attempted": int(n_attempted or 0)}
+    denom = max(n, int(n_attempted)) if n_attempted else n
     order = np.argsort(p)
-    thresholds = alpha * np.arange(1, n + 1) / n
+    thresholds = alpha * np.arange(1, n + 1) / denom
     passed = p[order] <= thresholds
     k = int(np.where(passed)[0].max()) + 1 if passed.any() else 0
     cutoff = float(p[order[k - 1]]) if k else 0.0
-    return {"n_tests": n, "cutoff": round(cutoff, 6), "n_rejected": int(k), "alpha": alpha,
-            "method": "Benjamini-Hochberg FDR"}
+    return {"n_tests": n, "n_attempted": denom, "cutoff": round(cutoff, 6),
+            "n_rejected": int(k), "alpha": alpha,
+            "method": "Benjamini-Hochberg FDR",
+            "note": "阈值分母采用尝试数，而非最终保留的 p 值个数"}
 
 
 def ic_decay(factor: pd.DataFrame, md, horizons=(1, 5, 10, 20, 40)) -> dict:
     out = {}
     for h in horizons:
-        st = ic_stats(compute_ic(factor, forward_returns(md, h)))
+        st = ic_stats(compute_ic(factor, forward_returns(md, h)), overlap_lags=h)
         out[str(h)] = st["ic_mean"]
     vals = [(int(h), v) for h, v in out.items() if v is not None]
     half_life = None
@@ -218,7 +252,9 @@ def factor_research(md, cfg, score=None) -> dict:
         per_factor[name] = st
         pvals.append(st["p_value"])
     composite = ic_stats(compute_ic(score, fwd20))
-    fdr = bh_fdr(pvals, float(cfg.get("validation.fdr_alpha", 0.05)))
+    attempted = int(cfg.get("validation.trials_factor_count", len(zs))) * int(
+        cfg.get("validation.trials_param_grid", 9))
+    fdr = bh_fdr(pvals, float(cfg.get("validation.fdr_alpha", 0.05)), n_attempted=attempted)
     sig_after = [name for name, st in per_factor.items()
                  if st["p_value"] is not None and st["p_value"] <= fdr["cutoff"]]
     return {
@@ -227,6 +263,7 @@ def factor_research(md, cfg, score=None) -> dict:
         "factor_correlation": factor_correlation(zs).to_dict(),
         "multiple_testing": {
             **fdr,
+            "attempted_total": attempted,
             "attempted_factors": int(cfg.get("validation.trials_factor_count", len(zs))),
             "attempted_param_combos": int(cfg.get("validation.trials_param_grid", 9)),
             "significant_before": [n for n, s in per_factor.items()

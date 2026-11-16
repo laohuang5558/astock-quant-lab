@@ -45,6 +45,11 @@ def performance(result, cfg) -> dict:
     p = _perf_from_equity(result.equity)
     net = float(result.equity.iloc[-1] - result.equity.iloc[0])
     gross = net + result.cost_total
+    executed = int(result.trades["side"].isin(["BUY", "SELL"]).sum()) if len(result.trades) else 0
+    ch = getattr(result, "cash_history", None)
+    eh = getattr(result, "exposure_history", None)
+    cash = ch.copy() if isinstance(ch, pd.Series) else pd.Series(dict(ch or {}))
+    expo = eh.copy() if isinstance(eh, pd.Series) else pd.Series(dict(eh or {}))
     p.update({
         "cost_total_cny": round(result.cost_total, 2),
         "cost_breakdown_cny": result.cost_breakdown,
@@ -53,8 +58,13 @@ def performance(result, cfg) -> dict:
         "cost_share_note": "毛收益=净收益+全部成本；若毛收益<=0 则占比不适用" if gross <= 0 else "",
         "avg_turnover_per_rebalance": round(float(np.mean(list(result.turnover_history.values()))), 4)
         if result.turnover_history else None,
+        "turnover_basis": "目标信号口径（非实际成交换手；被拒订单会造成偏离）",
         "blocked_orders": int(result.blocked_count),
-        "n_trades": int(len(result.trades)),
+        "n_trades": executed,
+        "n_blocked_records": int(len(result.trades)) - executed,
+        "cash_min_cny": round(float(cash.min()), 2) if len(cash) else None,
+        "max_position_exposure": round(float(expo.max()), 6) if len(expo) else None,
+        "unfilled_orders": len(getattr(result, "unfilled_history", {}) or {}),
     })
     return p
 
@@ -164,7 +174,8 @@ def monte_carlo(md, cfg, baseline: dict) -> dict:
         "baseline_sharpe": b,
         "baseline_percentile": round(float((arr < b).mean()), 4) if arr.size and b is not None else None,
         "deflated_sharpe": dsr,
-        "note": "随机对照组：同等调仓频率、同等持仓数、同等成本，仅把选股换成随机",
+        "control_equivalence": False,
+        "note": "简化向量化随机对照：同等调仓频率/持仓数/一次性成本近似，但**未**叠加趋势过滤、MA200 择时、回撤熔断、buffer、换手与单标的权重约束，也未走两段式撮合；与基准不等价，分位数与 DSR 仅作方向性参考，不作为严格统计证据",
     }
 
 
@@ -215,8 +226,28 @@ def overfit_suite(md, cfg, result, baseline: dict) -> dict:
         "3_monte_carlo_deflated_sharpe": monte_carlo(md, cfg, baseline),
         "4_cost_sensitivity": cost_sensitivity(md, cfg),
     }
-    present = [k for k, v in suite.items() if v is not None]
-    missing = [k for k, v in suite.items() if v is None]
+    # 专家团审核发现：仅判 `v is not None` 会让 complete 恒为 True（各函数均有兜底 dict）。
+    # 改为逐项校验关键字段有效且非 error，使「四件套成立」可证伪。
+    required = {
+        "1_out_of_sample": ("in_sample", "out_of_sample"),
+        "2_parameter_sensitivity": ("grid", "sharpe_spread"),
+        "3_monte_carlo_deflated_sharpe": ("n_paths", "random_sharpe_mean", "deflated_sharpe"),
+        "4_cost_sensitivity": ("rows", "return_hits_zero_at"),
+    }
+    missing = []
+    for key, fields in required.items():
+        v = suite.get(key)
+        if v is None or any(v.get(f) is None for f in fields) or "error" in v:
+            missing.append(key)
+        if key == "2_parameter_sensitivity" and isinstance(v, dict) and v.get("grid"):
+            if any("error" in row for row in v["grid"] if isinstance(row, dict)):
+                if key not in missing:
+                    missing.append(key)
+    n_cfg = int(cfg.get("validation.mc_paths", 200))
+    mc_key = "3_monte_carlo_deflated_sharpe"
+    if (suite.get(mc_key) or {}).get("n_paths", 0) < n_cfg and mc_key not in missing:
+        missing.append(mc_key)
+    present = [k for k in suite if k not in missing]
     return {"suite": suite, "present": present, "missing": missing,
             "complete": len(missing) == 0,
-            "note": "四件套缺任一项，quality gate 不得放行策略级结论"}
+            "note": "四件套缺任一项或关键字段无效，quality gate 不得放行策略级结论"}

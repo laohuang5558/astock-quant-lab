@@ -40,7 +40,7 @@ def build(rep: dict, eq: pd.Series) -> str:
         sub = pd.concat([sub, eq.iloc[[-1]]])
     dates = [str(d) for d in sub.index]
     nav = [round(float(v / eq.iloc[0]), 4) for v in sub.values]
-    dd = [round(float(v), 4) for v in (eq / eq.cummax() - 1.0).iloc[::step].values]
+    dd = [round(float(v), 4) for v in (eq / eq.cummax() - 1.0).reindex(sub.index).values]
 
     fac_names = list(fr["per_factor"].keys())
     fac_ic = [fr["per_factor"][k]["ic_mean"] for k in fac_names]
@@ -51,7 +51,7 @@ def build(rep: dict, eq: pd.Series) -> str:
     ma_ls = sorted({g["ma_long"] for g in grid})
     heat = [[g["ma_long"], g["top_n"], g["sharpe"]] for g in grid if g.get("sharpe") is not None]
 
-    cost_x = [f"×{r['multiplier']}g" for r in cost["rows"]]
+    cost_x = [f"×{r['multiplier']}" for r in cost["rows"]]
     cost_y = [r["total_return"] for r in cost["rows"]]
 
     mc_bars = {
@@ -114,6 +114,8 @@ def build(rep: dict, eq: pd.Series) -> str:
         sample_codes=rep["meta"]["sample"]["codes"],
         sample_start=rep["meta"]["sample"]["start"],
         sample_end=rep["meta"]["sample"]["end"],
+        sample_bars=rep["meta"]["sample"]["bars"],
+        selftest_n=rep.get("audit", {}).get("selftest", {}).get("tests_run", 0),
         conclusion=rep["one_line_conclusion"],
         verdict=gate["final_verdict"],
         eng_gate=gate["engineering_gate"],
@@ -296,7 +298,7 @@ code {{ background:#f0f3f7; padding:1px 5px; border-radius:4px; font-size:12.5px
 
 <h2 class="sec">3 · 策略设计</h2>
 <div class="card">
-<h3>因子定义与实测有效性</h3>
+<h3>因子定义与实测 IC（6 因子方向全部反转，权重组合已冻结）</h3>
 <table>
 <tr><th>因子</th><th>含义</th><th>IC 均值</th><th>ICIR</th><th>t 值</th><th>分层单调性</th></tr>
 {factor_rows}
@@ -387,11 +389,12 @@ code {{ background:#f0f3f7; padding:1px 5px; border-radius:4px; font-size:12.5px
 
 <h2 class="sec">10 · 交付物</h2>
 <div class="card">
-<p><span class="tag">astock-quant-lab/ 可运行 Python 工程（14 个模块 + 11 项单测）</span>
+<p><span class="tag">astock-quant-lab/ 可运行 Python 工程（14 项交付物 + {selftest_n} 项单测）</span>
 <span class="tag">config/default.json Step 0 基线</span>
-<span class="tag">data/sample_real/prices.csv 真实行情 42,093 行</span>
+<span class="tag">data/sample_real/prices.csv 真实行情 {sample_bars} 根 bar（原始 42,093 行）</span>
 <span class="tag">output/result.json 全量结构化结果</span>
 <span class="tag">output/SUMMARY.md 研究报告</span>
+<span class="tag">绩效读数仅为引擎验证，非策略有效性证据</span>
 <span class="tag">docs/ 架构·策略·数据合约·质量门</span>
 <span class="tag">astock-quant-designer/ WorkBuddy 技能包</span>
 <span class="tag">本 HTML 设计报告</span></p>

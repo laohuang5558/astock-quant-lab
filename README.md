@@ -93,11 +93,19 @@ quantlab/report.py              汇总 + reality-check 质量门（唯一放行�
 
 ## 数据源与交叉校验
 
-- **主数据源**：腾讯证券公开前复权日线 `web.ifzq.gtimg.cn`（L3 第三方，非交易所一手），真实抓取 42,093 根日线 / 20 只 / 2018-01-02～2026-11-13。
+- **主数据源**：腾讯证券公开前复权日线 `web.ifzq.gtimg.cn`（L3 第三方，非交易所一手）。原始 CSV 42,093 行，面板化清洗后入模 **42,091 根 bar** / 20 只 / 2018-01-02～2026-11-13。数字以 `output/result.json` 的 `meta.sample.bars` 为准。
 - **交叉校验**：通达信 MCP `tdx_kline` 的 600519 在 **2026-11-13** 的 OHLC 为 `1404.00 / 1437.69 / 1394.00 / 1435.26`，与腾讯接口逐字段一致；该校验已固化为单元测试 `test_cross_source_ohlc_600519`。
 - **成交额**为近似值 `volume(手) × 100 × (H+L+C)/3`，不是交易所真实成交额；仅用于流动性类因子的横截面排序。
 
 **已登记的数据缺口**（不得静默忽略）：行业分类缺失 → 行业中性化与行业权重上限本次不生效；历史 ST 标记、退市股与成分股历史变动缺失 → 存在幸存者偏差；PIT 财务缺失 → 价值/质量因子未启用。
+
+---
+
+## 研究用途声明（research-only / Not investment advice）
+
+本仓库为**研究方法与软件工程演示**，不含实盘下单、券商接口或自动交易循环；所有绩效读数仅用于引擎验证，**不构成策略有效性证据，也不构成投资建议**。质量门最终判定为「不放行」，专家团联合审核意见见 `docs/AUDIT_PANEL.md` 与 `docs/AUDIT_REPORT.html`。
+
+> For international readers: this is a **research-only** backtesting framework. Backtested results are not live performance and must not be construed as investment advice. No brokerage integration, no order execution.
 
 ---
 
@@ -106,6 +114,8 @@ quantlab/report.py              汇总 + reality-check 质量门（唯一放行�
 - 投资有风险，本内容仅供研究与教育，不构成投资建议。
 - 回测结果不等于实盘表现，历史业绩不代表未来。
 - 不荐股、不给买卖点与目标价、不承诺收益、不做代客理财、不代下单。
+- 本次为纯多头、无杠杆、不做空；如未来启用杠杆，高杠杆可能放大亏损甚至造成本金归零或倒欠。
+- 涉及税务、法律定性与跨境资金问题，转税务师 / 律师。
 - 涨跌表述遵循 A 股习惯：**红涨绿跌**；货币符号 ¥。
 - 如未来接入实盘执行层，需自行承担合规与风险责任；本仓库不含执行层。
 

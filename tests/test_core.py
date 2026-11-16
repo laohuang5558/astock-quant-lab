@@ -15,6 +15,7 @@ from quantlab.data import MarketData, board_price_limit, load_prices
 from quantlab.engine import BacktestEngine
 from quantlab.factors import bh_fdr, compute_ic, ic_stats, raw_factors
 from quantlab.pipeline import run_backtest
+from quantlab.risk import DrawdownFuse, historical_scenarios
 
 ROOT = Path(__file__).resolve().parent.parent
 CFG = Config.load()
@@ -154,6 +155,109 @@ class TestRealData(unittest.TestCase):
         self.assertGreater(len(res.equity), 400)
         self.assertFalse(res.equity.isna().any())
         self.assertTrue((res.equity > 0).all())
+
+
+class TestEngineCashAndExposure(unittest.TestCase):
+    """引擎级缺陷回归：两段式撮合 + 买入按可用现金等比例缩放。"""
+
+    def test_cash_nonnegative_and_exposure_le_one(self):
+        md = synth(200)
+        # 故意超配（Σw=1.6 > 1），强制触发买入缩放，检验现金不为负、敞口不越 1。
+        w = pd.Series({c: 0.2 for c in CODES})
+        reb = [md.dates[i] for i in (0, 10, 20, 30, 40, 50, 60, 70, 80, 90)]
+        res = BacktestEngine(md, CFG, lambda date: w, reb).run()
+        self.assertGreaterEqual(float(res.cash_history.min()), -1e-6,
+                                "任意时点现金不得为负（纯多头、无杠杆）")
+        self.assertLessEqual(float(res.exposure_history.max()), 1.0 + 1e-6,
+                             "持仓市值/总资产不得超过 1")
+        self.assertFalse(res.cash_history.isna().any())
+        self.assertFalse(res.exposure_history.isna().any())
+        self.assertEqual(len(res.cash_history), len(res.equity))
+        self.assertEqual(len(res.exposure_history), len(res.equity))
+        # 完整 pipeline 路径同样应产出这两个字段并满足约束
+        pres = run_backtest(md, CFG)["result"]
+        self.assertGreaterEqual(float(pres.cash_history.min()), -1e-6)
+        self.assertLessEqual(float(pres.exposure_history.max()), 1.0 + 1e-6)
+
+
+class TestTPlusOne(unittest.TestCase):
+    """T+1 真实生效：按持仓批次 lots 记录买入日、FIFO 消耗，当日买入不可卖。"""
+
+    def test_t_plus_1_lots_fifo(self):
+        md = synth(60)
+        code = CODES[0]
+        d1, d2, d3 = md.dates[0], md.dates[1], md.dates[2]
+
+        def wf(date):
+            return {d1: pd.Series({code: 1.0}),     # 先买满
+                    d2: pd.Series({code: 0.5}),     # 连续调仓日：减半
+                    d3: pd.Series({code: 0.3})}.get(date, pd.Series(dtype=float))  # 再减仓留底仓
+
+        eng = BacktestEngine(md, CFG, wf, [d1, d2, d3])
+        res = eng.run()
+        t = res.trades
+        buys = t[(t["side"] == "BUY") & (t["code"] == code)]
+        sells = t[(t["side"] == "SELL") & (t["code"] == code)]
+        self.assertGreater(len(buys), 0, "应先有买入")
+        self.assertGreater(len(sells), 0, "连续减仓应产生卖出")
+        # 当日买入部分不可卖：同标的买卖不得落在同一交易日
+        self.assertFalse(set(buys["date"]) & set(sells["date"]),
+                         "T+1 违规：当日买入的份额被当日卖出")
+        first_buy = min(buys["date"])
+        for sd in sells["date"]:
+            self.assertGreater(sd, first_buy, "卖出必须发生在买入之后的交易日")
+        self.assertLessEqual(float(sells["shares"].sum()), float(buys["shares"].sum()) + 1e-6)
+        # lots 账本真实登记（不是 dead code）且与持仓自洽（FIFO 部分消耗）
+        self.assertIn(code, eng.lots, "买入批次 lots 应被登记")
+        for c, ls in eng.lots.items():
+            self.assertAlmostEqual(sum(sh for _, sh in ls),
+                                   float(eng.positions.get(c, 0.0)), places=6)
+
+
+class TestDrawdownFuseStateMachine(unittest.TestCase):
+    """熔断状态机：任意档位逐级升档到清仓档、清仓档可经影子净值恢复。"""
+
+    def test_stepwise_escalation_to_clearing_and_recovery(self):
+        fuse = DrawdownFuse(CFG)
+        fuse.update("2020-01-01", 1_000_000.0, 0.0)
+        self.assertEqual(fuse.exposure, 1.0)
+        fuse.update("2020-01-02", 840_000.0, -0.16)   # 真实回撤 0.16
+        self.assertEqual(fuse.exposure, 0.5)
+        fuse.update("2020-01-03", 780_000.0, -0.07)   # 真实回撤 0.22
+        self.assertEqual(fuse.exposure, 0.0, "应能从任意档位逐级升到 0.0 清仓档")
+
+        # 清仓后组合为现金、净值冻结，但市场回升 → 影子净值回撤收敛 → 恢复
+        dates = pd.bdate_range("2020-02-03", periods=60).strftime("%Y-%m-%d").tolist()
+        recovered = False
+        for dt in dates:
+            fuse.update(dt, 780_000.0, 0.02)
+            if fuse.exposure == 1.0:
+                recovered = True
+                break
+        self.assertTrue(recovered, "清仓档应存在恢复路径（影子净值）")
+        self.assertEqual(fuse.exposure, 1.0)
+        # 恢复后不应被冻结的真实 dd 立刻误升档
+        fuse.update("2020-06-01", 780_000.0, 0.0)
+        self.assertEqual(fuse.exposure, 1.0)
+        # 事件结构向后兼容（date/drawdown/action）且新增 trigger_date / effective_date
+        self.assertTrue(all({"date", "drawdown", "action"} <= set(e) for e in fuse.events))
+        self.assertTrue(all("trigger_date" in e and "effective_date" in e for e in fuse.events))
+
+
+class TestStressGlobalPeak(unittest.TestCase):
+    """历史情景：全局峰值口径，窗口内不得用 seg.cummax() 重置峰值。"""
+
+    def test_historical_scenarios_uses_global_peak(self):
+        idx = pd.bdate_range("2020-01-01", periods=300).strftime("%Y-%m-%d").tolist()
+        # 峰值 150 出现在窗口外（第 2 个交易日），窗口内净值恒定 100
+        vals = [100.0, 150.0] + [100.0] * (len(idx) - 2)
+        eq = pd.Series(vals, index=idx)
+        a, b = idx[100], idx[200]
+        out = historical_scenarios(eq, {"W": (a, b)})
+        self.assertTrue(out["W"]["covered"])
+        # 旧口径窗口内 seg.cummax()=100 → 回撤 0；全局口径以窗口外 150 为基准 → 约 -0.3333
+        self.assertLess(out["W"]["max_drawdown"], -0.30,
+                        "全局峰值口径不应在窗口内被重置")
 
 
 if __name__ == "__main__":

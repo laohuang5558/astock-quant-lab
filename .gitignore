@@ -3,10 +3,9 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
-output/*.json
-output/*.md
-output/*.csv
-!output/.gitkeep
+# output/ 为可复现的结果产物与审核基线，纳入版本控制供第三方追溯
+# （专家团审核发现：此前被忽略却列为交付物，导致仓库内无 result.json）
+
 data/raw/
 *.log
 .DS_Store
