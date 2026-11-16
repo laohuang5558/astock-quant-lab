@@ -1,4 +1,6 @@
 # AStock Quant Lab - runtime dependencies
-# 核心引擎仅需以下三项；无 scipy / sklearn / 券商接口 / 实盘下单依赖
+# 核心引擎仅需 pandas + numpy；无 scipy / sklearn / 券商接口 / 实盘下单依赖
 pandas>=2.0
 numpy>=1.24
+# 仅用于 scripts/validate_contracts.py 解析 contracts/openapi.yaml，引擎运行不需要
+PyYAML>=6.0

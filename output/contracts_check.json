@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "checked_at": "2026-11-16 20:02:07",
+  "checks": {
+    "openapi_version": "3.1.0",
+    "path_count": 20,
+    "operation_count": 23,
+    "operation_ids_unique": true,
+    "ref_count": 54,
+    "unresolved_refs": [],
+    "schemas": [
+      "AgentOpinion",
+      "Envelope"
+    ],
+    "ddl_tables": [
+      "instrument",
+      "price_bar",
+      "factor_definition",
+      "preregistration",
+      "research_run",
+      "run_metric",
+      "factor_value",
+      "backtest_trade",
+      "equity_point",
+      "quality_gate_item",
+      "quality_gate_verdict",
+      "audit_opinion",
+      "agent_task",
+      "agent_message",
+      "document_chunk",
+      "delivery_artifact"
+    ],
+    "ddl_table_count": 16,
+    "ddl_paren_balanced": true,
+    "pgvector 扩展": true,
+    "独立 schema": true,
+    "向量维度 512": true,
+    "HNSW 余弦索引": true,
+    "现金硬约束": true,
+    "敞口硬约束": true,
+    "证据有效性": true,
+    "队列索引": true,
+    "验收视图": true,
+    "dangling_fk": []
+  },
+  "issues": []
+}

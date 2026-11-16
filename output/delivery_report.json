@@ -1,0 +1,107 @@
+{
+  "delivery_target": "192.168.2.203",
+  "base_url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/",
+  "generated_at": "2026-11-16T20:02:13",
+  "metric_fingerprint": "e819989972c994d1",
+  "final_verdict": "不放行",
+  "files": [
+    {
+      "name": "astock-quant-lab-v3.tar.gz",
+      "size": 2312249,
+      "sha256": "d4e95ea0fb660a352669779fa0011af896056dff6daec79594b52436bd58949a",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "astock-quant-design-report.html",
+      "size": 52918,
+      "sha256": "e0b4360bc1fc53c94f4db6febf741959e69db84cffe66bb1edb75d79eaf7b243",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-design-report.html",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "astock-quant-audit-report.html",
+      "size": 29589,
+      "sha256": "ecc5be9a80c033bdc12c10e3a5f30a2d93af5660edb4ff797081d4f69abbd0b6",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-audit-report.html",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "astock-quant-designer.zip",
+      "size": 27131,
+      "sha256": "7ccd76c4c0d14fb8fa24a0b0374eb35c79dfa5acab7aad00d52a7ba993f2b29f",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-designer.zip",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "PLATFORM_ARCHITECTURE.md",
+      "size": 24161,
+      "sha256": "265fbc27b3ebfe5692194054ff557d12d5714622e50d28bd9f590a6ff7c568ac",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/PLATFORM_ARCHITECTURE.md",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "openapi.yaml",
+      "size": 12836,
+      "sha256": "215357d18b52e555f691b1594ead27ebdda36c56907bf2d90a5107ef53560fdd",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/openapi.yaml",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "schema.sql",
+      "size": 12740,
+      "sha256": "1289f8a9922ec758e360923a700e1944e82930f8105c82bda990348882649db6",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/schema.sql",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "contracts_check.json",
+      "size": 1100,
+      "sha256": "b6bd1603c5f1b22e700bdc1cac4215a83a0be75594e56dd93769ac41808a1b44",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/contracts_check.json",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "verify.json",
+      "size": 354,
+      "sha256": "8a90c27760ababb1619d2f59c8ad0c41373f170c7de9b0753f4a6bc31f3922e8",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/verify.json",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "README.md",
+      "size": 9487,
+      "sha256": "aa8f4e1ea337bb355b9528b78bb22bf89d405e8757bbc8111ea008e42d429c06",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/README.md",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "index.html",
+      "size": 7964,
+      "sha256": "01d4865b32a049c09ddd351a3baa303f8335e782a1d93b5e45c110e7905c73a5",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "ACCEPTANCE.md",
+      "size": 3966,
+      "sha256": "13c546ecf210121d33939116c13c2569fb1629cb32c9b3622c76f098287079fb",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/ACCEPTANCE.md",
+      "put_status": 201,
+      "verified": true
+    }
+  ],
+  "all_verified": true,
+  "note": "本清单不记录自身 SHA-256（自指循环）；其余文件均已 GET 回读逐字节比对"
+}

@@ -19,6 +19,8 @@ jobs:
           node-version: '20'
       - name: Install Python dependencies
         run: pip install -r requirements.txt
+      - name: Architecture contract validation (OpenAPI + DDL)
+        run: python scripts/validate_contracts.py
       - name: Unit tests
         run: python -m quantlab selftest
       - name: Full research pipeline (deterministic, real sample data)
@@ -39,5 +41,6 @@ jobs:
           name: quantlab-verify
           path: |
             output/verify.json
+            output/contracts_check.json
             output/result.json
             output/SUMMARY.md

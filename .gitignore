@@ -10,3 +10,5 @@ data/raw/
 *.log
 .DS_Store
 .scratch/
+# 交付生成的中间产物由 deploy/deliver.py 重建（含 2MB+ 的 tar.gz），不入库
+dist/

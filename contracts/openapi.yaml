@@ -1,0 +1,327 @@
+openapi: 3.1.0
+info:
+  title: A股量化研究平台 API
+  version: 1.0.0
+  description: |
+    内网 ai-server 上的 research-only 量化研究平台接口契约。
+    所有绩效数值只来自 output/result.json，响应必须携带 metric_fingerprint。
+    不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。
+  license:
+    name: research-only
+servers:
+  - url: http://192.168.2.203/quant/api/v1
+    description: 内网 ai-server（nginx 反向代理）
+  - url: http://127.0.0.1:8000/quant/api/v1
+    description: 本地开发
+tags:
+  - name: system
+    description: 健康检查与依赖探针
+  - name: runs
+    description: 研究运行与结果读数
+  - name: gate
+    description: 质量门与一致性校验
+  - name: audit
+    description: 专家团评审
+  - name: agents
+    description: 智能体编排
+  - name: delivery
+    description: 交付物与验收
+paths:
+  /health:
+    get:
+      tags: [system]
+      summary: 服务与依赖健康状态
+      operationId: getHealth
+      responses:
+        '200':
+          description: 健康（degraded 表示旁路依赖不可用，不阻断主链路）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /runs:
+    get:
+      tags: [runs]
+      summary: 运行列表
+      operationId: listRuns
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: 运行列表
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+    post:
+      tags: [runs]
+      summary: 触发一次完整研究流水线
+      operationId: createRun
+      description: 写操作。必须提供 Idempotency-Key；重复键返回原 run_id，不重复启动回测。
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                config_path:
+                  type: string
+                  default: config/default.json
+                reason:
+                  type: string
+                  description: 触发原因，写入审计记录
+      responses:
+        '202':
+          description: 已入队
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '409':
+          description: 状态机不允许的跃迁
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+  /runs/{run_id}:
+    get:
+      tags: [runs]
+      summary: 运行详情（含 config_snapshot）
+      operationId: getRun
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        '404': { description: 运行不存在, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/status:
+    get:
+      tags: [runs]
+      summary: worker 状态轮询
+      operationId: getRunStatus
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/result:
+    get:
+      tags: [runs]
+      summary: 原始 result.json 只读副本
+      operationId: getRunResult
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/metrics:
+    get:
+      tags: [runs]
+      summary: 38 个关键路径指标
+      operationId: getRunMetrics
+      description: 只返回 METRIC_PATHS 内的路径；前端不得自行计算绩效。
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/equity:
+    get:
+      tags: [runs]
+      summary: 净值/现金/敞口/回撤序列
+      operationId: getEquity
+      parameters:
+        - $ref: '#/components/parameters/RunId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/trades:
+    get:
+      tags: [runs]
+      summary: 成交逐笔
+      operationId: getTrades
+      parameters: [ { $ref: '#/components/parameters/RunId' }, { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/Cursor' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/factors:
+    get:
+      tags: [runs]
+      summary: 因子 IC / HAC t / BH-FDR
+      operationId: getFactors
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/overfit:
+    get:
+      tags: [runs]
+      summary: 过拟合四件套（含等价随机对照）
+      operationId: getOverfit
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /runs/{run_id}/quality-gate:
+    get:
+      tags: [gate]
+      summary: 18 项判据 + 工程/策略两票 + 硬否决项
+      operationId: getQualityGate
+      description: 裁决由后端推导，接口只返回，不提供写操作。
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /verify/{run_id}:
+    get:
+      tags: [gate]
+      summary: 一致性校验（指纹 / 标记 / 陈旧值）
+      operationId: getVerify
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /audit/{run_id}/opinions:
+    get:
+      tags: [audit]
+      summary: 6 位委员意见 + 主审复核
+      operationId: getAuditOpinions
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /audit/{run_id}/panels:
+    post:
+      tags: [audit]
+      summary: 发起专家团并行只读评审
+      operationId: createPanel
+      parameters: [ { $ref: '#/components/parameters/RunId' }, { $ref: '#/components/parameters/IdempotencyKey' } ]
+      responses:
+        '202': { description: 已入队, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /preregistration:
+    get:
+      tags: [gate]
+      summary: 冻结假设与样本外使用次数
+      operationId: getPreregistration
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+    post:
+      tags: [gate]
+      summary: 写入预注册假设（对应 --force 语义）
+      operationId: setPreregistration
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, description: 事前假设全文 }
+                force: { type: boolean, default: false }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /reports/{run_id}/design:
+    get:
+      tags: [delivery]
+      summary: 设计报告 HTML（保留 metric-fingerprint）
+      operationId: getDesignReport
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: HTML, content: { text/html: { schema: { type: string } } } }
+  /reports/{run_id}/audit:
+    get:
+      tags: [delivery]
+      summary: 联合审核报告 HTML
+      operationId: getAuditReport
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: HTML, content: { text/html: { schema: { type: string } } } }
+  /deliveries:
+    get:
+      tags: [delivery]
+      summary: 交付物清单（含 sha256 与内网 URL）
+      operationId: listDeliveries
+      parameters: [ { $ref: '#/components/parameters/Limit' }, { $ref: '#/components/parameters/Cursor' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+    post:
+      tags: [delivery]
+      summary: 生成并上传交付包（触发类）
+      operationId: createDelivery
+      parameters: [ { $ref: '#/components/parameters/IdempotencyKey' } ]
+      responses:
+        '202': { description: 已入队, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /agents/tasks:
+    get:
+      tags: [agents]
+      summary: 编排任务状态
+      operationId: listAgentTasks
+      parameters: [ { $ref: '#/components/parameters/RunId' }, { $ref: '#/components/parameters/Limit' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+  /agents/tasks/{task_id}/callback:
+    post:
+      tags: [agents]
+      summary: 委员回执（须带 evidence_path，无证据不计票）
+      operationId: agentCallback
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentOpinion' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+        '422': { description: 缺少证据路径, content: { application/json: { schema: { $ref: '#/components/schemas/Envelope' } } } }
+components:
+  parameters:
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: 研究运行唯一标识
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+      description: 基于 (created_at, id) 的游标，禁止深分页 OFFSET
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+      description: 触发类操作必填；重复键返回原结果，不重复执行
+  schemas:
+    Envelope:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: integer
+          description: '0 成功；4001 参数校验失败；4041 运行不存在；4091 状态机跃迁非法；4221 配置非法；5001 引擎执行失败；5031 依赖服务不可用'
+        message: { type: string }
+        data: { description: 端点特定载荷 }
+        request_id: { type: string }
+        run_id: { type: string, format: uuid }
+        metric_fingerprint:
+          type: string
+          pattern: '^[0-9a-f]{16}$'
+          description: 由 result.json 的 38 个关键读数计算；含数值的响应必填
+    AgentOpinion:
+      type: object
+      required: [task_id, verdict, opinions, output_hash]
+      properties:
+        task_id: { type: string, format: uuid }
+        verdict: { type: string, enum: [成立, 不成立, 存疑] }
+        opinions:
+          type: array
+          items:
+            type: object
+            required: [item, evidence_path, severity]
+            properties:
+              item: { type: string }
+              evidence_path:
+                type: string
+                description: result.json 路径或文件行号；为空则该意见不计票
+              evidence: { type: string }
+              severity: { type: string, enum: [致命, 重大, 一般] }
+        output_hash: { type: string }
