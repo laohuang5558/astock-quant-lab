@@ -62,6 +62,11 @@
       "below_ma_exposure": 0.50
     }
   },
+  "capacity": {
+    "max_participation": 0.10,
+    "impact_k": 0.5,
+    "note": "仅当用户给出 step0.capital 时启用；冲击成本用线性模型 impact_rate = impact_k × participation，系数为显式假设而非实测，不得当作事实"
+  },
   "risk": {
     "dd_fuse_levels": [
       { "dd": 0.15, "exposure": 0.50 },
@@ -77,15 +82,27 @@
     "research_capital_cny": 1000000,
     "research_capital_note": "仅记账单位，用于最低佣金与份额计算；用户选择『仅研究、不设规模』，不代表策略规模或容量结论",
     "oos_use_count": 1,
+    "oos_use_count_note": "由 state/research_state.json 持久化并在策略参数哈希变化时递增；此值仅为首次初始化基线",
+    "oos_max_uses": 3,
     "trials_factor_count": 6,
-    "trials_param_grid": 9,
+    "trials_param_grid": "auto_from_sensitivity_axes",
     "mc_paths": 200,
     "cost_multipliers": [1.0, 1.5, 2.0, 3.0],
-    "sensitivity_grid": { "top_n": [5, 8, 12], "ma_long": [90, 120, 160] },
+    "sensitivity_axes": {
+      "strategy.top_n": [5, 8, 12],
+      "strategy.trend.ma_long": [90, 120, 160],
+      "strategy.market_timing.ma_window": [150, 200, 250],
+      "strategy.max_weight": [0.15, 0.20, 0.25],
+      "factors.weights.mom_60": [0.15, 0.25, 0.35],
+      "risk.recovery_dd": [0.06, 0.08, 0.12],
+      "cost.slippage_bps": [2.5, 5.0, 10.0]
+    },
     "fdr_alpha": 0.05
   },
   "data": {
     "prices_csv": "data/sample_real/prices.csv",
+    "raw_prices_csv": "data/sample_real/prices_raw.csv",
+    "raw_prices_note": "未复权 OHLC 用于涨跌停基准（腾讯 day 口径，42093 行 / 20 只）；收益与盯市仍用前复权价，成交价改用未复权价的改造因缺除权除息流水仍列为剩余缺口",
     "source": "腾讯证券前复权日线 web.ifzq.gtimg.cn；与通达信 MCP 逐日 OHLC 交叉校验",
     "amount_proxy": "amount = volume(手) x 100 x (H+L+C)/3，为成交额近似值，非交易所真实成交额",
     "known_gaps": [

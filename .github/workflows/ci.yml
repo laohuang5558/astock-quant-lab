@@ -1,0 +1,43 @@
+name: quantlab-consistency-ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Unit tests
+        run: python -m quantlab selftest
+      - name: Full research pipeline (deterministic, real sample data)
+        run: python -m quantlab run
+      - name: Rebuild design + audit reports from fresh result.json
+        run: |
+          python scripts/build_design_report.py --out ../astock-quant-design-report.html
+          python scripts/build_design_report.py --out docs/DESIGN_REPORT.html
+          python scripts/build_audit_report.py --out-dir docs --top-html ../astock-quant-audit-report.html
+      - name: Validate inline JS
+        run: python scripts/check_inline_js.py ../astock-quant-design-report.html ../astock-quant-audit-report.html
+      - name: Consistency gate (fingerprint + metric markers + stale values)
+        run: python -m quantlab verify --render
+      - name: Upload verification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantlab-verify
+          path: |
+            output/verify.json
+            output/result.json
+            output/SUMMARY.md

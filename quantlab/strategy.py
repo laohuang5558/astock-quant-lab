@@ -38,8 +38,15 @@ def trend_mask(md, cfg) -> pd.DataFrame:
     return ok.fillna(False)
 
 
-def market_proxy(md) -> pd.Series:
-    """等权样本指数（生产环境应替换为中证全指/万得全A，见 docs/STRATEGY_SPEC.md）。"""
+def market_proxy(md, cfg=None) -> pd.Series:
+    """等权样本指数（生产环境应替换为中证全指/万得全A，见 docs/STRATEGY_SPEC.md）。
+
+    strategy.market_timing.proxy 接线：当前只实现了 equal_weight_sample；
+    配置成其它值必须显式报错，不允许静默回退成另一种口径。
+    """
+    proxy = str(cfg.get("strategy.market_timing.proxy", "equal_weight_sample")) if cfg else "equal_weight_sample"
+    if proxy != "equal_weight_sample":
+        raise ValueError(f"market_timing.proxy={proxy!r} 未实现：当前数据源只支持 equal_weight_sample")
     r = md.ret.mean(axis=1).fillna(0.0)
     return (1.0 + r).cumprod()
 
@@ -48,7 +55,7 @@ def market_exposure(md, cfg) -> pd.Series:
     """大盘择时：等权样本指数在 MA200 之上满仓，之下降到 below_ma_exposure。"""
     w = int(cfg.get("strategy.market_timing.ma_window", 200))
     below = float(cfg.get("strategy.market_timing.below_ma_exposure", 0.5))
-    px = market_proxy(md)
+    px = market_proxy(md, cfg)
     ma = px.rolling(w, min_periods=max(2, int(w * 0.6))).mean()
     return pd.Series(np.where(px > ma, 1.0, below), index=px.index).fillna(below)
 
@@ -66,6 +73,54 @@ def _cap_weights(w: pd.Series, cap: float) -> pd.Series:
     return w / w.sum() if w.sum() > 0 else w
 
 
+def _cap_industry_weights(w: pd.Series, industry_row: pd.Series, cap: float) -> tuple[pd.Series, bool]:
+    """行业权重上限：行业内超 cap 则整体缩放，再重新归一化并迭代。
+
+    industry 全为 UNKNOWN（本次演示样本的真实情况）时返回 applied=False，
+    明确登记「配置项已接线但因数据缺口空转」，不伪造行业标签、不假装生效。
+    """
+    if w.empty or cap >= 1.0 - 1e-9:
+        return w, False
+    known = industry_row.reindex(w.index).fillna("UNKNOWN")
+    if bool((known == "UNKNOWN").all()):
+        return w, False
+    groups = {name: list(cols) for name, cols in known.groupby(known).groups.items()}
+    if len(groups) <= 1:
+        # 只有一个行业：满仓必然违反上限，把总敞口压到 cap，剩余留现金
+        return w * cap, True
+    out = w.copy().astype(float)
+    for _ in range(32):
+        sums = {g: float(out.loc[cols].sum()) for g, cols in groups.items()}
+        over = {g: s for g, s in sums.items() if s > cap + 1e-9}
+        if not over:
+            break
+        for g, s in over.items():
+            out.loc[groups[g]] *= cap / s
+        # 关键：裁剪后**不再全局归一化**（归一化会把权重推回超限行业）。
+        # 释放的权重只补给仍有 headroom 的行业；若所有行业都顶到 cap，
+        # 组合总权重 <1，剩余为现金——这是约束不可行时的诚实结果。
+        total = float(out.sum())
+        if total >= 1.0 - 1e-9:
+            continue
+        sums2 = {g: float(out.loc[cols].sum()) for g, cols in groups.items()}
+        headroom = {g: max(0.0, cap - s) for g, s in sums2.items()}
+        denom = sum(headroom.values())
+        if denom <= 1e-12:
+            break
+        give = min(1.0 - total, denom)
+        for g, h in headroom.items():
+            if h <= 0:
+                continue
+            cols = groups[g]
+            cur = float(out.loc[cols].sum())
+            add = give * h / denom
+            if cur > 0:
+                out.loc[cols] *= (cur + add) / cur
+            else:
+                out.loc[cols] = add / len(cols)
+    return out, True
+
+
 def build_weight_function(md, cfg, score: pd.DataFrame, fuse_fn: Callable[[str], float]):
     """返回 weights_fn(date) -> Series，供回测引擎在 T 日收盘调用、T+1 开盘执行。"""
     tmask = trend_mask(md, cfg)
@@ -73,8 +128,11 @@ def build_weight_function(md, cfg, score: pd.DataFrame, fuse_fn: Callable[[str],
     top_n = int(cfg.get("strategy.top_n", 8))
     buf_mult = float(cfg.get("strategy.buffer_multiple", 1.5))
     max_w = float(cfg.get("strategy.max_weight", 0.20))
+    max_ind_w = float(cfg.get("strategy.max_industry_weight", 0.40))
     max_turn = float(cfg.get("strategy.max_turnover_per_rebalance", 0.60))
     state: Dict[str, pd.Series] = {"last": pd.Series(dtype=float)}
+    wiring_stats = {"industry_cap_checks": 0, "industry_cap_applied": 0,
+                    "max_industry_weight": max_ind_w}
 
     def weights_fn(date: str) -> pd.Series:
         if date not in score.index or date not in mexpo.index:
@@ -93,6 +151,10 @@ def build_weight_function(md, cfg, score: pd.DataFrame, fuse_fn: Callable[[str],
             selected = list(dict.fromkeys(kept + valid.index.tolist()))[:top_n]
             w = pd.Series(1.0 / max(1, len(selected)), index=selected, dtype=float)
             w = _cap_weights(w, max_w)
+            ind_row = md.industry.loc[date] if date in md.industry.index else pd.Series(dtype=object)
+            w, applied = _cap_industry_weights(w, ind_row, max_ind_w)
+            wiring_stats["industry_cap_checks"] += 1
+            wiring_stats["industry_cap_applied"] += int(applied)
             target = w * float(mexpo.loc[date]) * float(fuse_fn(date))
         # 换手约束：超限则与上一期权重线性混合
         prev = state["last"]
@@ -107,6 +169,7 @@ def build_weight_function(md, cfg, score: pd.DataFrame, fuse_fn: Callable[[str],
         state["last"] = t
         return t
 
+    weights_fn.wiring_stats = wiring_stats  # 供 report / config_wiring 审计消费
     return weights_fn
 
 

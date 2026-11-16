@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-11-16 19:26:03",
+  "preregistration": {
+    "hypothesis": "6 个价量因子经横截面 rank-Z 标准化后按预注册权重线性合成为正向 alpha；叠加 MA60/MA120 个股趋势过滤、MA200 等权样本指数择时、回撤熔断与月末调仓，在 2018-01-01~2026-11-13 的 A 股样本上可获得显著优于随机选股的风险调整收益。样本外自 2024-01-01 起，原则上仅使用一次；方向重估须作为新假设在全新样本重走流程。",
+    "hash": "87aafb8e6de3cdda46bcf68e3a19a9e862cccbcfc21976e73ecd3cddcc20329c",
+    "registered_at": "2026-11-16 19:26:03",
+    "frozen": true,
+    "note": "预注册一旦写入即冻结；修改须显式 --force 并同时递增样本外使用次数"
+  },
+  "strategy_hash": "a9774e760257d7e1e0b80c5301616c9b1bf4af4756bf1a975fb48f120f5c0e16",
+  "oos_use_count": 1,
+  "history": []
+}

@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "fingerprint": "e819989972c994d1",
+  "checked_at": "2026-11-16 19:49:53",
+  "checked_files": [
+    "docs/DESIGN_REPORT.html",
+    "docs/AUDIT_REPORT.html",
+    "../astock-quant-design-report.html",
+    "../astock-quant-audit-report.html",
+    "docs/metrics.md"
+  ],
+  "metric_paths": 38,
+  "issues": [],
+  "warnings": []
+}

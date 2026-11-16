@@ -1,9 +1,12 @@
-"""命令行入口：fetch / run / selftest。
+"""命令行入口：fetch / run / selftest / preregister / state / verify。
 
-    python -m quantlab fetch
+    python -m quantlab fetch [--adjust qfq|none]
     python -m quantlab selftest
     python -m quantlab run --quick
     python -m quantlab run --config config/default.json --out output/
+    python -m quantlab preregister --text "事前假设"
+    python -m quantlab state
+    python -m quantlab verify [--render]
 """
 from __future__ import annotations
 
@@ -23,7 +26,8 @@ def _resolve(p: str) -> Path:
 
 def cmd_fetch(args) -> int:
     script = ROOT / "scripts" / "fetch_tencent.py"
-    sys.argv = [str(script), "--out", args.out, "--start", args.start, "--end", args.end]
+    sys.argv = [str(script), "--out", args.out, "--start", args.start, "--end", args.end,
+                "--adjust", args.adjust]
     runpy.run_path(str(script), run_name="__main__")
     return 0
 
@@ -59,6 +63,32 @@ def cmd_selftest(args) -> int:
     return 0 if res.wasSuccessful() else 1
 
 
+def cmd_preregister(args) -> int:
+    import json
+    from .config import Config
+    from .state import register
+    out = register(ROOT, Config.load(args.config), args.text, force=args.force)
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_state(args) -> int:
+    import json
+    from .state import load_state
+    st = load_state()
+    print(json.dumps(st, ensure_ascii=False, indent=2) if st else "未初始化：先运行 python -m quantlab run")
+    return 0
+
+
+def cmd_verify(args) -> int:
+    import json
+    from .verify import verify
+    out = verify(render=args.render)
+    print(json.dumps({k: out[k] for k in ("ok", "fingerprint", "metric_paths",
+                                          "issues", "warnings")}, ensure_ascii=False, indent=2))
+    return 0 if out["ok"] else 1
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="quantlab", description="A股中低频多因子＋趋势策略研究框架")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -67,6 +97,7 @@ def main(argv=None) -> int:
     f.add_argument("--out", default="data/sample_real/prices.csv")
     f.add_argument("--start", default="2018-01-01")
     f.add_argument("--end", default="2026-11-13")
+    f.add_argument("--adjust", choices=["qfq", "none"], default="qfq")
     f.set_defaults(func=cmd_fetch)
 
     r = sub.add_parser("run", help="跑完整研究与回测")
@@ -78,6 +109,19 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("selftest", help="运行单元测试")
     s.set_defaults(func=cmd_selftest)
+
+    p = sub.add_parser("preregister", help="写入/查看预注册假设（冻结后需 --force）")
+    p.add_argument("--text", required=True, help="事前假设全文")
+    p.add_argument("--config", default="config/default.json")
+    p.add_argument("--force", action="store_true", help="强制改写并递增样本外使用次数")
+    p.set_defaults(func=cmd_preregister)
+
+    stp = sub.add_parser("state", help="查看研究状态（预注册 / 样本外使用次数 / 留痕）")
+    stp.set_defaults(func=cmd_state)
+
+    v = sub.add_parser("verify", help="交付前一致性校验（数值指纹 / 陈旧值 / 标记）")
+    v.add_argument("--render", action="store_true", help="先重新渲染 docs/metrics.md 再校验")
+    v.set_defaults(func=cmd_verify)
 
     args = ap.parse_args(argv)
     return args.func(args)

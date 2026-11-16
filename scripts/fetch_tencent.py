@@ -34,14 +34,20 @@ def prefix(code: str) -> str:
     return "sh" if code.startswith(("6", "9")) else "sz"
 
 
-def fetch_one(code: str, start: str, end: str, retries: int = 3) -> list[dict]:
-    """按 2 年一段分页，避免单次返回的条数上限截断历史。"""
+def fetch_one(code: str, start: str, end: str, retries: int = 3,
+              adjust: str = "qfq") -> list[dict]:
+    """按 2 年一段分页，避免单次返回的条数上限截断历史。
+
+    adjust='qfq' 取前复权（收益与盯市口径）；adjust='none' 取未复权原始价
+    （涨跌停基准口径）。两者必须分开存储，禁止混用，见 docs/DATA_CONTRACT.md。
+    """
     out: dict[str, dict] = {}
     y0, y1 = int(start[:4]), int(end[:4])
     for y in range(y0, y1 + 1, 2):
         seg_start = max(start, f"{y}-01-01")
         seg_end = min(end, f"{y + 1}-12-31")
-        param = f"{prefix(code)}{code},day,{seg_start},{seg_end},800,qfq"
+        suffix = "qfq" if adjust == "qfq" else ""
+        param = f"{prefix(code)}{code},day,{seg_start},{seg_end},800,{suffix}"
         url = ENDPOINT + "?" + urllib.parse.urlencode({"param": param})
         payload = None
         for attempt in range(retries):
@@ -56,7 +62,7 @@ def fetch_one(code: str, start: str, end: str, retries: int = 3) -> list[dict]:
                 time.sleep(1.0 + attempt)
         key = f"{prefix(code)}{code}"
         node = (payload.get("data") or {}).get(key) or {}
-        bars = node.get("qfqday") or node.get("day") or []
+        bars = (node.get("qfqday") or []) if adjust == "qfq" else (node.get("day") or [])
         for b in bars:
             if len(b) < 6:
                 continue
@@ -79,6 +85,8 @@ def main() -> int:
     ap.add_argument("--start", default="2018-01-01")
     ap.add_argument("--end", default="2026-11-13")
     ap.add_argument("--codes", nargs="*", default=DEFAULT_CODES)
+    ap.add_argument("--adjust", choices=["qfq", "none"], default="qfq",
+                    help="qfq=前复权（收益/盯市）；none=未复权（涨跌停基准）")
     args = ap.parse_args()
 
     root = Path(__file__).resolve().parent.parent
@@ -90,7 +98,7 @@ def main() -> int:
     rows = []
     for i, code in enumerate(args.codes, 1):
         try:
-            got = fetch_one(code, args.start, args.end)
+            got = fetch_one(code, args.start, args.end, adjust=args.adjust)
             rows.extend(got)
             print(f"[{i:>2}/{len(args.codes)}] {code}: {len(got)} bars", flush=True)
         except Exception as exc:

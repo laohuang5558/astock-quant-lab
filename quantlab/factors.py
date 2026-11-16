@@ -35,7 +35,9 @@ def raw_factors(md, cfg) -> Dict[str, pd.DataFrame]:
         "illiq_20": -(ret.abs() / amt.clip(lower=1.0)).rolling(20, min_periods=15).mean(),
     }
     enabled = cfg.get("factors.enabled", list(f))
-    return {k: f[k] for k in enabled}
+    # FACTOR_META.sign 接线：预注册方向（全部 +1）在此生效。
+    # 审核裁决明确「禁止据本次样本反号」，故这里只实现开关，不把 sign 改成 -1。
+    return {k: f[k] * float(FACTOR_META.get(k, {}).get("sign", 1)) for k in enabled}
 
 
 def winsorize_mad(df: pd.DataFrame, k: float = 3.0) -> pd.DataFrame:
@@ -56,6 +58,52 @@ def cross_section_rank_zscore(df: pd.DataFrame, min_names: int = 5) -> pd.DataFr
     return z
 
 
+def apply_winsor(df: pd.DataFrame, spec: str) -> pd.DataFrame:
+    """按 factors.winsor 配置执行去极值；未知取值直接报错，不静默回退。"""
+    s = str(spec or "mad3").strip().lower()
+    if s in ("none", "off", "false"):
+        return df
+    if s.startswith("mad"):
+        tail = s[3:].strip()
+        k = float(tail) if tail else 3.0
+        return winsorize_mad(df, k)
+    if s.startswith("q"):
+        tail = s[1:].strip().lstrip("_")
+        p = float(tail) / 100.0 if tail and float(tail) > 1 else (float(tail) if tail else 0.01)
+        p = min(max(p, 1e-6), 0.49)
+        lo = df.quantile(p, axis=1)
+        hi = df.quantile(1.0 - p, axis=1)
+        return df.clip(lower=lo, upper=hi, axis=0)
+    raise ValueError(f"未知的 factors.winsor 取值：{spec!r}（支持 none / mad3 / madK / q1 / q0.01）")
+
+
+def apply_standardize(w: pd.DataFrame, spec: str, min_names: int) -> pd.DataFrame:
+    """按 factors.standardize 配置执行横截面标准化；未知取值直接报错。"""
+    s = str(spec or "rank_zscore").strip().lower()
+    if s in ("none", "raw", "off"):
+        return w
+    if s == "rank_zscore":
+        return cross_section_rank_zscore(w, min_names)
+    if s == "zscore":
+        return w.sub(w.mean(axis=1), axis=0).div(
+            w.std(axis=1).replace(0, np.nan), axis=0).where(w.notna())
+    if s in ("rank_pct", "rank"):
+        return w.rank(axis=1, pct=True).where(w.notna())
+    raise ValueError(f"未知的 factors.standardize 取值：{spec!r}"
+                     "（支持 none / rank_zscore / zscore / rank_pct）")
+
+
+def effective_min_names(cfg, declared: int) -> int:
+    """按 factors.nan_policy 解析最小横截面宽度。"""
+    policy = str(cfg.get("factors.nan_policy", "drop_cross_section")).strip().lower()
+    if policy == "keep_partial":
+        return 1
+    if policy in ("drop_cross_section", "fill_zero"):
+        return int(declared)
+    raise ValueError(f"未知的 factors.nan_policy 取值：{policy!r}"
+                     "（支持 drop_cross_section / keep_partial / fill_zero）")
+
+
 def industry_neutralize(z: pd.DataFrame, industry: pd.DataFrame, enabled: bool = False) -> pd.DataFrame:
     """行业内去均值。行业数据缺失（全 UNKNOWN）时返回原值并登记缺口，不伪造行业标签。"""
     if not enabled:
@@ -74,23 +122,42 @@ def industry_neutralize(z: pd.DataFrame, industry: pd.DataFrame, enabled: bool =
 
 
 def build_score(md, cfg):
-    """返回 (合成因子得分, 明细字典)。得分仅用 T 日及之前数据。"""
+    """返回 (合成因子得分, 明细字典)。得分仅用 T 日及之前数据。
+
+    专家团审核 followup #8：winsor / standardize / nan_policy / FACTOR_META.sign
+    此前均写在代码里当常量，配置改了不生效。本版全部由 config 驱动并对非法值报错。
+    """
     raws = raw_factors(md, cfg)
-    min_names = int(cfg.get("factors.min_cross_section", 5))
+    declared_min = int(cfg.get("factors.min_cross_section", 5))
+    min_names = effective_min_names(cfg, declared_min)
+    winsor_spec = str(cfg.get("factors.winsor", "mad3"))
+    std_spec = str(cfg.get("factors.standardize", "rank_zscore"))
+    nan_policy = str(cfg.get("factors.nan_policy", "drop_cross_section")).strip().lower()
     neutral = cfg.get("factors.neutralize", "industry_optional") == "industry_optional" and (
         md.industry.replace("UNKNOWN", np.nan).notna().sum().sum() > 0
     )
     zs = {}
     for name, raw in raws.items():
-        w = winsorize_mad(raw)
-        z = cross_section_rank_zscore(w, min_names)
+        w = apply_winsor(raw, winsor_spec)
+        z = apply_standardize(w, std_spec, min_names)
+        if nan_policy == "fill_zero":
+            z = z.fillna(0.0)
         zs[name] = industry_neutralize(z, md.industry, enabled=neutral)
     weights = cfg.get("factors.weights", {})
     parts = [zs[k] * float(weights.get(k, 0.0)) for k in zs]
     score = sum(parts) if parts else pd.DataFrame(0.0, index=md.close.index, columns=md.close.columns)
-    score = cross_section_rank_zscore(score, min_names)
+    score = cross_section_rank_zscore(score, declared_min)
     score = score.where(md.eligible)
-    return score, {"raw": raws, "z": zs, "industry_neutralized": bool(neutral)}
+    wiring = {
+        "winsor": winsor_spec, "standardize": std_spec, "nan_policy": nan_policy,
+        "min_cross_section": declared_min, "effective_min_names": min_names,
+        "neutralize": str(cfg.get("factors.neutralize", "industry_optional")),
+        "industry_neutralized": bool(neutral),
+        "factor_signs": {k: float(FACTOR_META.get(k, {}).get("sign", 1)) for k in raws},
+        "sign_policy": "预注册方向（全部 +1）；审核裁决禁止据本次样本反号，方向重估须作新假设在全新样本重走流程",
+    }
+    return score, {"raw": raws, "z": zs, "industry_neutralized": bool(neutral),
+                   "wiring": wiring}
 
 
 def forward_returns(md, horizon: int = 20) -> pd.DataFrame:
@@ -252,8 +319,11 @@ def factor_research(md, cfg, score=None) -> dict:
         per_factor[name] = st
         pvals.append(st["p_value"])
     composite = ic_stats(compute_ic(score, fwd20))
-    attempted = int(cfg.get("validation.trials_factor_count", len(zs))) * int(
-        cfg.get("validation.trials_param_grid", 9))
+    # 试验次数由真实 sensitivity_axes 推导，不再读人工填写的常量（followup #7/#8）。
+    axes = cfg.get("validation.sensitivity_axes", {}) or {}
+    n_grid = 1 + sum(len([v for v in vals if v != cfg.get(axis)])
+                     for axis, vals in axes.items())
+    attempted = int(cfg.get("validation.trials_factor_count", len(zs))) * int(n_grid)
     fdr = bh_fdr(pvals, float(cfg.get("validation.fdr_alpha", 0.05)), n_attempted=attempted)
     sig_after = [name for name, st in per_factor.items()
                  if st["p_value"] is not None and st["p_value"] <= fdr["cutoff"]]
@@ -269,6 +339,13 @@ def factor_research(md, cfg, score=None) -> dict:
             "significant_before": [n for n, s in per_factor.items()
                                    if s["p_value"] is not None and s["p_value"] < 0.05],
             "significant_after_fdr": sig_after,
+        },
+        "config_wiring": {
+            "factor_pipeline": detail["wiring"],
+            "universe": getattr(md, "wiring", {}),
+            "cost_impact_model": cfg.get("cost.impact_model"),
+            "fundamental_plugin": cfg.get("factors.fundamental_plugin"),
+            "note": "逐项声明配置项是否真正进入计算；行业上限因 industry=UNKNOWN 空转属显式登记，不伪造生效",
         },
         "data_quality": {
             "lookahead_bias": "已处理：因子仅用 shift/rolling 向后窗口；前向收益不进入信号",

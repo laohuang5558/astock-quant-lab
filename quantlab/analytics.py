@@ -79,29 +79,72 @@ def oos_check(result, cfg) -> dict:
         "in_sample": _perf_from_equity(ins),
         "out_of_sample": _perf_from_equity(oos),
         "oos_use_count": int(cfg.get("validation.oos_use_count", 1)),
-        "note": "样本外仅使用 1 次；任何基于样本外结果回改参数的行为都必须递增计数并重新定级",
+        "oos_max_uses": int(cfg.get("validation.oos_max_uses", 3)),
+        "note": "计数由 state/research_state.json 持久化；策略参数指纹变化即自动递增，超上限由质量门降级",
     }
 
 
+def sensitivity_combo_count(cfg) -> int:
+    """真实参数试验次数：基准点 1 + 每个轴的非基准取值个数（单轴逐一扰动）。
+
+    该数字由配置推导，不再由人工填写常量；FDR 尝试数分母与 DSR n_trials 共用它。
+    """
+    axes = cfg.get("validation.sensitivity_axes", {}) or {}
+    n = 1
+    for axis, vals in axes.items():
+        cur = cfg.get(axis)
+        n += len([v for v in vals if v != cur])
+    return int(n)
+
+
 def parameter_sensitivity(md, cfg) -> dict:
-    grid = cfg.get("validation.sensitivity_grid", {"top_n": [5, 8, 12], "ma_long": [90, 120, 160]})
+    """扩宽邻域网格：因子权重 / 择时 / 熔断 / 成本 / 持仓数 / 权重上限均单轴扰动。
+
+    基准参数取「邻域共识」而非单点：以全部邻域点夏普中位数为共识读数，
+    单点基准显著高于共识即记为「点估计过拟合嫌疑」。
+    """
+    axes = cfg.get("validation.sensitivity_axes", {}) or {}
     rows = []
-    for n in grid.get("top_n", [8]):
-        for ma in grid.get("ma_long", [120]):
-            c = cfg.with_overrides(**{"strategy.top_n": int(n), "strategy.trend.ma_long": int(ma)})
-            try:
-                res = run_backtest(md, c)["result"]
-                p = _perf_from_equity(res.equity)
-                rows.append({"top_n": int(n), "ma_long": int(ma),
-                             "annualized_return": p.get("annualized_return"),
-                             "sharpe": p.get("sharpe"), "max_drawdown": p.get("max_drawdown")})
-            except Exception as exc:
-                rows.append({"top_n": int(n), "ma_long": int(ma), "error": f"{type(exc).__name__}: {exc}"})
+
+    def one(label: str, overrides: dict, is_baseline: bool):
+        c = cfg.with_overrides(**overrides) if overrides else cfg
+        row = {"axis": label, "overrides": overrides, "is_baseline": is_baseline,
+               "top_n": int(c.get("strategy.top_n", 8)),
+               "ma_long": int(c.get("strategy.trend.ma_long", 120))}
+        try:
+            res = run_backtest(md, c)["result"]
+            p = _perf_from_equity(res.equity)
+            row.update({"annualized_return": p.get("annualized_return"),
+                        "sharpe": p.get("sharpe"), "max_drawdown": p.get("max_drawdown")})
+        except Exception as exc:
+            row["error"] = f"{type(exc).__name__}: {exc}"
+        rows.append(row)
+
+    one("baseline", {}, True)
+    for axis, vals in axes.items():
+        cur = cfg.get(axis)
+        for v in vals:
+            if v == cur:
+                continue
+            one(axis, {axis: v}, False)
+
     sh = [r["sharpe"] for r in rows if r.get("sharpe") is not None]
     spread = round(max(sh) - min(sh), 4) if len(sh) >= 2 else None
     cliff = bool(spread is not None and (spread > 0.8 or (min(sh) < 0 < max(sh))))
-    return {"grid": rows, "sharpe_spread": spread, "cliff_like_decay": cliff,
-            "note": "邻域网格；悬崖式衰减判据：夏普极差>0.8 或正负号翻转"}
+    neigh = [r["sharpe"] for r in rows if not r.get("is_baseline") and r.get("sharpe") is not None]
+    consensus = round(float(np.median(neigh)), 4) if neigh else None
+    base_row = next((r for r in rows if r.get("is_baseline")), {})
+    base_sh = base_row.get("sharpe")
+    gap = round(float(base_sh - consensus), 4) if (base_sh is not None and consensus is not None) else None
+    return {
+        "grid": rows, "n_combos": len(rows), "axes": list(axes.keys()),
+        "sharpe_spread": spread, "cliff_like_decay": cliff,
+        "consensus_sharpe": consensus, "baseline_sharpe": base_sh,
+        "point_minus_consensus": gap,
+        "point_estimate_suspicion": bool(gap is not None and gap > 0.15),
+        "note": "单轴逐一扰动（one-at-a-time），非全因子设计；共识=邻域点夏普中位数；"
+                "单点高于共识 >0.15 记为点估计过拟合嫌疑",
+    }
 
 
 def _normal_cdf(x: float) -> float:
@@ -122,60 +165,74 @@ def deflated_sharpe(daily_sr: float, n_obs: int, n_trials: int, skew: float, kur
             "note": "近似式；假设各试验独立，实际因子间相关会改变阈值，结论置信度中等"}
 
 
-def monte_carlo(md, cfg, baseline: dict) -> dict:
-    """随机策略对照：向量化快速模拟，保持同等调仓频率/持仓数/成本口径。
+def monte_carlo(md, cfg, result, baseline: dict, score=None) -> dict:
+    """等价随机对照：复用完整权重函数 + 两段式撮合，真跑 n_paths 次完整引擎。
 
-    与基准的差别仅在选股（随机 vs 因子打分）；净值按等权持有期收益逐日复利。
+    等价性不是自称，而是可证断言：用真实 score 走 score_override 路径重跑一次，
+    其逐日净值与成本必须与基准逐值一致（差异 <=1e-6），否则 control_equivalence=False
+    且分位数 / DSR 判为无效、不进入质量门结论。
     """
-    from .strategy import rebalance_dates
+    from .factors import build_score
+    from .pipeline import build_random_score, run_backtest
+
+    if score is None:
+        score, _ = build_score(md, cfg)
     n_paths = int(cfg.get("validation.mc_paths", 200))
-    start, end = cfg.get("period.start"), cfg.get("period.end")
-    dates = [d for d in md.dates if start <= d <= end]
-    reb = set(rebalance_dates(md, start, end))
-    R = md.ret.fillna(0.0).reindex(index=dates, columns=md.codes).to_numpy(dtype=float)
-    E = md.eligible.reindex(index=dates, columns=md.codes).fillna(False).to_numpy(dtype=bool)
-    top_n = int(cfg.get("strategy.top_n", 8))
-    # 单次完整换仓的近似成本（双边佣金+印花税+滑点，按 bps）
-    cost_bps = (2 * float(cfg.get("cost.commission_bps", 2.5))
-                + float(cfg.get("cost.stamp_tax_sell_bps", 10.0))
-                + 2 * float(cfg.get("cost.slippage_bps", 5.0)))
-    sharpes = []
+
+    # ---- 等价性可证检查 ----
+    check = run_backtest(md, cfg, score_override=score)["result"]
+    same_len = len(check.equity) == len(result.equity)
+    max_diff = (float(np.max(np.abs(check.equity.to_numpy() - result.equity.to_numpy())))
+                if same_len and len(result.equity) else float("inf"))
+    cost_diff = abs(float(check.cost_total) - float(result.cost_total))
+    equivalent = bool(same_len and np.isfinite(max_diff) and max_diff <= 1e-6 and cost_diff <= 1e-6)
+
+    sharpes, dd_list, cost_list = [], [], []
     for i in range(n_paths):
-        rng = np.random.default_rng(9000 + i)
-        eq, curve = 1.0, np.empty(len(dates), dtype=float)
-        picks = None
-        pending_cost = 0.0
-        for j, d in enumerate(dates):
-            if picks is not None:
-                day_r = float(np.nanmean(R[j, picks])) - pending_cost
-                pending_cost = 0.0
-                eq *= (1.0 + day_r)
-            curve[j] = eq
-            if d in reb:
-                pool = np.flatnonzero(E[j])
-                if pool.size:
-                    picks = rng.choice(pool, size=min(top_n, pool.size), replace=False)
-                    pending_cost = cost_bps / 10_000.0
-        s = pd.Series(curve)
-        sr = s.pct_change().dropna()
-        sd = float(sr.std(ddof=1)) if len(sr) > 1 else 0.0
-        if sd > 0:
-            sharpes.append(float(sr.mean() / sd * math.sqrt(252)))
+        rnd = build_random_score(score, seed=9000 + i)
+        res = run_backtest(md, cfg, score_override=rnd)["result"]
+        p = _perf_from_equity(res.equity)
+        if p.get("sharpe") is not None:
+            sharpes.append(float(p["sharpe"]))
+        if p.get("max_drawdown") is not None:
+            dd_list.append(float(p["max_drawdown"]))
+        cost_list.append(float(res.cost_total))
     arr = np.array(sharpes, dtype=float)
     b = baseline.get("sharpe")
-    trials = int(cfg.get("validation.trials_factor_count", 6)) * int(cfg.get("validation.trials_param_grid", 9))
+    raw_grid = cfg.get("validation.trials_param_grid", None)
+    try:
+        n_grid = int(raw_grid)
+    except (TypeError, ValueError):
+        n_grid = sensitivity_combo_count(cfg)
+    trials = int(cfg.get("validation.trials_factor_count", 6)) * n_grid
     dsr = deflated_sharpe(baseline.get("daily_sharpe"), baseline.get("trading_days", 0), trials,
                           baseline.get("skew", 0.0), baseline.get("kurtosis", 3.0))
+    percentile = round(float((arr < b).mean()), 4) if arr.size and b is not None else None
     return {
         "n_paths": int(len(arr)),
         "random_sharpe_mean": round(float(arr.mean()), 4) if arr.size else None,
         "random_sharpe_std": round(float(arr.std(ddof=1)), 4) if arr.size > 1 else None,
         "random_sharpe_p95": round(float(np.quantile(arr, 0.95)), 4) if arr.size else None,
+        "random_mdd_median": round(float(np.median(dd_list)), 4) if dd_list else None,
+        "random_cost_mean_cny": round(float(np.mean(cost_list)), 2) if cost_list else None,
         "baseline_sharpe": b,
-        "baseline_percentile": round(float((arr < b).mean()), 4) if arr.size and b is not None else None,
-        "deflated_sharpe": dsr,
-        "control_equivalence": False,
-        "note": "简化向量化随机对照：同等调仓频率/持仓数/一次性成本近似，但**未**叠加趋势过滤、MA200 择时、回撤熔断、buffer、换手与单标的权重约束，也未走两段式撮合；与基准不等价，分位数与 DSR 仅作方向性参考，不作为严格统计证据",
+        "baseline_percentile": percentile if equivalent else None,
+        "baseline_percentile_raw": percentile,
+        "significantly_better_than_random": bool(equivalent and percentile is not None and percentile >= 0.95),
+        "deflated_sharpe": dsr if equivalent else None,
+        "control_equivalence": equivalent,
+        "equivalence_evidence": {
+            "method": "真实 score 经 score_override 重跑，逐日净值与成本须与基准一致",
+            "max_abs_equity_diff": round(max_diff, 9) if np.isfinite(max_diff) else None,
+            "cost_abs_diff": round(cost_diff, 9),
+            "shared_pipeline": ["build_weight_function(buffer/换手/单标的与行业上限/趋势过滤)",
+                                "market_exposure(MA200 择时)", "DrawdownFuse + on_mark 强制调仓",
+                                "BacktestEngine 两段式撮合 + T+1 lots FIFO + 涨跌停/停牌 + 成本"],
+            "only_difference": "选股打分值（因子合成 vs 固定种子随机 rank-Z）",
+        },
+        "note": ("等价对照：完整复用权重函数、择时、熔断、换手与两段式撮合，仅把选股打分换成随机；"
+                 "n_paths 次真实引擎重跑，非向量化近似") if equivalent else
+                "等价性断言失败：分位数与 DSR 已置空，不得作为统计证据",
     }
 
 
@@ -218,12 +275,12 @@ def attribution(md, cfg, baseline: dict) -> dict:
             "note": "逐项关闭某机制后的年化收益差；各变体不正交，差额不可简单相加，属方向性拆解"}
 
 
-def overfit_suite(md, cfg, result, baseline: dict) -> dict:
+def overfit_suite(md, cfg, result, baseline: dict, score=None) -> dict:
     """过拟合四件套汇总，缺项显式登记为 None + 原因，绝不编造。"""
     suite = {
         "1_out_of_sample": oos_check(result, cfg),
         "2_parameter_sensitivity": parameter_sensitivity(md, cfg),
-        "3_monte_carlo_deflated_sharpe": monte_carlo(md, cfg, baseline),
+        "3_monte_carlo_deflated_sharpe": monte_carlo(md, cfg, result, baseline, score),
         "4_cost_sensitivity": cost_sensitivity(md, cfg),
     }
     # 专家团审核发现：仅判 `v is not None` 会让 complete 恒为 True（各函数均有兜底 dict）。
@@ -245,7 +302,8 @@ def overfit_suite(md, cfg, result, baseline: dict) -> dict:
                     missing.append(key)
     n_cfg = int(cfg.get("validation.mc_paths", 200))
     mc_key = "3_monte_carlo_deflated_sharpe"
-    if (suite.get(mc_key) or {}).get("n_paths", 0) < n_cfg and mc_key not in missing:
+    mc = suite.get(mc_key) or {}
+    if (mc.get("n_paths", 0) < n_cfg or not mc.get("control_equivalence")) and mc_key not in missing:
         missing.append(mc_key)
     present = [k for k in suite if k not in missing]
     return {"suite": suite, "present": present, "missing": missing,

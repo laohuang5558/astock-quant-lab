@@ -36,6 +36,7 @@ def risk_elements(rep: dict) -> list:
     sens = suite.get("2_parameter_sensitivity", {}) or {}
     cost = suite.get("4_cost_sensitivity", {}) or {}
     oos = suite.get("1_out_of_sample") or rep["overfit"].get("_oos") or {}
+    rk = rep.get("risk", {})
     is_sh = (oos.get("in_sample") or {}).get("sharpe")
     oos_sh = (oos.get("out_of_sample") or {}).get("sharpe")
     return [
@@ -66,12 +67,14 @@ def risk_elements(rep: dict) -> list:
             "if_risk": "若校正后仍 0 个显著，禁止使用『有效因子』表述；扩到全A点时间面板后重跑 IC/IR 与 BH-FDR",
         },
         {
-            "item": "参数敏感性",
-            "reading": f"邻域网格夏普极差 {sens.get('sharpe_spread')}；悬崖式衰减={sens.get('cliff_like_decay')}",
-            "level": "较大" if sens.get("cliff_like_decay") else "一般",
+            "item": "参数敏感性与邻域共识",
+            "reading": (f"单轴扰动 {sens.get('n_combos')} 组（{len(sens.get('axes', []))} 个轴）；"
+                        f"夏普极差 {sens.get('sharpe_spread')}；邻域共识夏普 {sens.get('consensus_sharpe')}；"
+                        f"单点-共识差 {sens.get('point_minus_consensus')}；悬崖式衰减={sens.get('cliff_like_decay')}"),
+            "level": "较大" if (sens.get("cliff_like_decay") or sens.get("point_estimate_suspicion")) else "一般",
             "confidence": "中",
-            "tradeoff": "网格只覆盖 top_n 与 ma_long 两个维度，未覆盖权重、调仓频率与滑点",
-            "if_risk": "若极差>0.8 或符号翻转，把参数从点估计改为区间共识（取邻域中位权重），并降低策略置信度",
+            "tradeoff": "单轴逐一扰动非全因子设计，不含交互项；成本与熔断轴已纳入，但调仓频率轴仍缺",
+            "if_risk": "若极差>0.8、符号翻转或单点高于邻域共识>0.15，把参数从点估计改为区间共识并降低策略置信度",
         },
         {
             "item": "成本完整性与成本敏感性",
@@ -83,11 +86,13 @@ def risk_elements(rep: dict) -> list:
         },
         {
             "item": "容量评估",
-            "reading": "用户选择『仅研究、不设规模』；capital=null，参与率与冲击成本为占位符，本次不输出容量结论",
+            "reading": (f"capacity_report 状态={rk.get('capacity', {}).get('status')}；"
+                        "工程侧已实现参与率/线性冲击/容量上限计算路径，capital=null 时显式 not_evaluated；"
+                        "当前 amount 仍为近似成交额，冲击系数为显式假设而非实测"),
             "level": "较大",
             "confidence": "高",
             "tradeoff": "无规模并非零风险，只是把容量问题移出本次研究范围",
-            "if_risk": "给出资金规模与单标的参与率上限后，按日均成交额分档补冲击成本曲线并重算容量上限，未补齐前禁止任何实盘规模建议",
+            "if_risk": "给出 step0.capital 与真实成交额后自动输出参与率明细、超上限标的与容量上限；未补齐前禁止任何实盘规模建议",
         },
         {
             "item": "数据缺口：幸存者偏差 / 行业 / ST 历史 / PIT 财务",
@@ -99,10 +104,12 @@ def risk_elements(rep: dict) -> list:
         },
         {
             "item": "过拟合四件套完整性",
-            "reading": f"已执行 {len(rep['overfit']['present'])} 项，缺失 {rep['overfit']['missing']}",
+            "reading": (f"已执行 {len(rep['overfit']['present'])} 项，缺失 {rep['overfit']['missing']}；"
+                        f"随机对照等价={rep.get('audit', {}).get('control_equivalence', {}).get('passed')}；"
+                        f"样本外使用次数={rep.get('audit', {}).get('oos_state', {}).get('oos_use_count')}"),
             "level": "一般" if rep["overfit"]["complete"] else "重大",
             "confidence": "高",
-            "tradeoff": "蒙特卡洛对照组使用随机选股，未覆盖『换因子定义』这类研究者自由度",
+            "tradeoff": "等价随机对照仍只替换选股打分，未覆盖『换因子定义』这类研究者自由度",
             "if_risk": "任一缺失即不放行；样本外被重复使用超过 3 次且无预设假设，结论降级为存疑",
         },
         {
@@ -181,10 +188,16 @@ def quality_gate(rep: dict) -> dict:
         f"已执行：{', '.join(ov['present'])}；缺失：{ov['missing']}",
         "complete 现按各套件关键字段有效性判定，可证伪")
 
-    fdr_ok = bool(fdr.get("n_tests", 0) > 0 and fdr.get("n_attempted", 0) >= 54)
+    dsr_trials = ((ov["suite"].get("3_monte_carlo_deflated_sharpe") or {})
+                  .get("deflated_sharpe") or {}).get("n_trials")
+    consistent = (dsr_trials is None) or (fdr.get("n_attempted") == dsr_trials)
+    fdr_ok = bool(fdr.get("n_tests", 0) > 0
+                  and fdr.get("n_attempted", 0) >= fdr.get("n_tests", 0)
+                  and consistent)
     add("多重检验校正", "成立" if fdr_ok else "不成立",
-        f"BH-FDR n_tests={fdr['n_tests']} / 尝试数分母={fdr.get('n_attempted')} / cutoff={fdr['cutoff']} / 校正后显著={fdr['n_rejected']}",
-        "分母须用真实尝试数（与 DSR 的 54 次一致）；显著仅代表非零，方向另判")
+        f"BH-FDR n_tests={fdr['n_tests']} / 尝试数分母={fdr.get('n_attempted')} / "
+        f"DSR n_trials={dsr_trials} / cutoff={fdr['cutoff']} / 校正后显著={fdr['n_rejected']}",
+        "分母由 sensitivity_axes 真实网格数 × 因子数推导；须与 DSR 口径一致，不再硬编码 54；显著仅代表非零，方向另判")
 
     ic = audit.get("ic_method", {})
     add("IC 统计推断方法", "成立" if ic.get("passed") else "不成立",
@@ -204,10 +217,20 @@ def quality_gate(rep: dict) -> dict:
         "存疑" if (i_sh is not None and o_sh is not None and o_sh < i_sh) else "成立")
     add("样本外未显著劣化", oos_verdict,
         f"样本内夏普 {i_sh} / 样本外夏普 {o_sh} / 使用次数 {oos['oos_use_count']}",
-        "样本外夏普转负即判不成立；oos_use_count 目前仍为静态常量，未持久化" )
+        "样本外夏普转负即判不成立；使用次数已由 state/research_state.json 持久化，见下一条")
 
-    add("容量评估", "存疑", "capital=null；参与率与冲击成本未计算",
-        "用户选定『仅研究、不设规模』，本次不下容量结论；策略级实盘建议不放行")
+    stt = audit.get("oos_state", {})
+    count, max_uses = stt.get("oos_use_count", 0), stt.get("oos_max_uses", 3)
+    add("样本外使用次数未超限", "成立" if (count <= max_uses and stt.get("preregistration_hash")) else "不成立",
+        f"持久化计数 {count} / 上限 {max_uses} / 事件={stt.get('event')} / "
+        f"预注册哈希={str(stt.get('preregistration_hash'))[:12]} / 历史留痕 {stt.get('history_len', 0)} 条",
+        "策略参数指纹变化即递增；超过上限强制降级，防止用样本外反复调参（HARKing）")
+
+    cap = rep["risk"].get("capacity", {})
+    add("容量评估", "成立" if cap.get("status") == "evaluated" else "存疑",
+        f"capacity_report 状态={cap.get('status')}；capital={cap.get('capital_cny')}；"
+        f"待输入={len(cap.get('required_inputs', []))} 项",
+        "用户选定『仅研究、不设规模』；计算路径已实现，输入到位即可出结论，本次不下容量结论；策略级实盘建议不放行")
 
     add("数据缺口已登记", "成立", f"{len(rep['meta']['data_gaps'])} 项缺口写入 config.data.known_gaps 与风险表",
         "其中『全A点时间面板缺失』为重大级，未决")
@@ -227,9 +250,39 @@ def quality_gate(rep: dict) -> dict:
         "纯多头无杠杆的硬约束；v1 曾出现 275 天负现金、敞口 1.3338，绩效读数失真")
 
     ce = audit.get("control_equivalence", {})
+    ev = ce.get("evidence") or {}
     add("随机对照等价性", "成立" if ce.get("passed") else "不成立",
-        f"对照组是否复用完整权重函数与两段式撮合：{ce.get('passed')}；{ce.get('note', '')}",
-        "不等价时，分位数与 DSR 仅作方向性参考，不作为严格统计证据")
+        f"复用完整权重函数+择时+熔断+两段式撮合={ce.get('passed')}；"
+        f"真实 score 重跑与基准净值最大差={ev.get('max_abs_equity_diff')} / 成本差={ev.get('cost_abs_diff')}；"
+        f"完整引擎重跑 {ce.get('n_paths', 0)} 次",
+        "等价性由逐日净值一致性断言证明，不再自称；失败时分位数与 DSR 置空")
+
+    mc = ov["suite"].get("3_monte_carlo_deflated_sharpe") or {}
+    sig = bool(mc.get("significantly_better_than_random"))
+    add("随机对照显著性", "成立" if sig else "不成立",
+        f"等价对照分位={mc.get('baseline_percentile')} / 随机均值夏普={mc.get('random_sharpe_mean')} / "
+        f"随机 P95={mc.get('random_sharpe_p95')} / 基准={mc.get('baseline_sharpe')} / DSR={(mc.get('deflated_sharpe') or {}).get('dsr')}",
+        "判据：等价且基准>=随机分布 P95 才成立；这是替换原『等价性』硬否决后的更严格门槛")
+
+    sens = ov["suite"].get("2_parameter_sensitivity") or {}
+    add("参数取邻域区间共识", "存疑" if sens.get("point_estimate_suspicion") else "成立",
+        f"网格 {sens.get('n_combos')} 组 / {len(sens.get('axes', []))} 个轴；"
+        f"邻域共识夏普={sens.get('consensus_sharpe')} / 单点-共识差={sens.get('point_minus_consensus')}",
+        "单点显著高于邻域共识>0.15 记存疑；单轴扰动不含交互项，仍非全因子设计")
+
+    cw = audit.get("config_wiring", {})
+    wired = all(k in cw for k in ("factor_pipeline", "weights", "universe"))
+    add("配置项接线完整性", "成立" if wired else "不成立",
+        f"winsor/standardize/nan_policy/sign/行业上限/universe/impact_model/双价格均已声明；"
+        f"行业上限实际生效次数={cw.get('weights', {}).get('industry_cap_applied')}；"
+        f"价格口径={cw.get('raw_price_basis')}",
+        "行业上限因 industry=UNKNOWN 空转属显式登记；非法配置值直接报错，不静默回退")
+
+    pb = cw.get("raw_price_basis", "unknown")
+    add("双价格口径分离", "存疑" if pb.startswith("raw_for_limits") else "不成立",
+        f"涨跌停基准=未复权 day 序列（已加载={cw.get('universe', {}).get('raw_prices_loaded')}）；"
+        "收益与盯市=前复权；撮合价仍用前复权价",
+        "剩余缺口：缺除权除息流水，无法把成交价也切到未复权口径并同步调整现金与分红；不以占位数据冒充已解决")
 
     rp = audit.get("risk_pricing", {})
     add("风险收益比与尾部风险", "成立" if rp.get("passed") else "不成立",
@@ -244,21 +297,33 @@ def quality_gate(rep: dict) -> dict:
     add("风险读数纳入定级", "成立" if any("风险收益比" in str(e.get("item", "")) for e in elems) else "不成立",
         "风险表是否已消费 vol_drawdown / tail / stress / correlation 读数", "")
 
-    add("策略级投资结论", "不成立",
-        "演示样本 20 只、非全A、合成因子 IC 方向反转、样本外失效、随机对照不等价、风险收益比不达标、容量未评估、重大级数据缺口未决",
-        "本次交付的是软件工程 + 研究方法，不构成任何可实盘的策略结论")
+    blocking = {
+        "合成因子方向反转": comp.get("ic_mean") is not None and comp["ic_mean"] < 0,
+        "样本外夏普转负": o_sh is not None and o_sh < 0,
+        "未显著优于等价随机": not sig,
+        "风险收益比不达标": not audit.get("risk_pricing", {}).get("passed"),
+        "容量未评估": cap.get("status") != "evaluated",
+        "重大级数据缺口未决": len(rep["meta"]["data_gaps"]) > 0,
+    }
+    active = [k for k, v in blocking.items() if v]
+    add("策略级投资结论", "不成立" if active else "成立",
+        f"由 {len(blocking)} 项判据推导，命中 {len(active)} 项：{', '.join(active) or '无'}；"
+        f"样本为 {rep['meta']['sample']['codes']} 只演示股、非全A",
+        "本门只出 VERDICT；本次交付的是软件工程与研究方法，不构成任何可实盘的策略结论")
 
     n_bad = sum(1 for x in items if x["VERDICT"] == "不成立")
     n_susp = sum(1 for x in items if x["VERDICT"] == "存疑")
     n_ok = sum(1 for x in items if x["VERDICT"] == "成立")
     hard_items = {"撮合与会计核算", "IC 统计推断方法", "无未来函数 / 代码可运行",
                   "多重检验校正", "合成因子方向一致性", "策略级投资结论",
-                  "风险收益比与尾部风险", "随机对照等价性"}
+                  "风险收益比与尾部风险", "随机对照等价性", "随机对照显著性",
+                  "样本外使用次数未超限", "配置项接线完整性"}
     hard_fail = [x["ITEM"] for x in items if x["ITEM"] in hard_items and x["VERDICT"] != "成立"]
 
-    engineering_gate = "可交付" if (cash.get("passed") and st.get("passed") and ic.get("passed")) else "修复后复核"
+    engineering_gate = "可交付" if (cash.get("passed") and st.get("passed") and ic.get("passed")
+                                    and ce.get("passed") and wired) else "修复后复核"
     strategy_conclusion_gate = "放行" if (n_bad == 0 and n_susp == 0 and not hard_fail
-                                          and ov["complete"] and ce.get("passed")) else "不放行"
+                                          and ov["complete"] and ce.get("passed") and sig) else "不放行"
     if engineering_gate == "可交付" and strategy_conclusion_gate == "放行":
         final = "放行"
     elif engineering_gate == "可交付" and n_bad <= 1:
@@ -276,20 +341,31 @@ def quality_gate(rep: dict) -> dict:
         "followups": [
             "冻结当前合成得分权重组合：补齐全 A 点时间面板前不得反向使用、不得继续回测调参；方向重估须作为新假设在全新样本重走流程",
             "接入含退市股/历史ST/历史行业/PIT财务/真实成交额的全A点时间面板，按当时存续重构横截面后重跑 IC/FDR/分层",
-            "把蒙特卡洛对照改为复用完整权重函数与两段式撮合的等价对照，重算分位与 DSR；当前分位仅作方向性参考",
-            "给出资金规模与单标的参与率上限，补冲击成本曲线与容量上限",
-            "把 oos_use_count 持久化，参数或方向回改时递增，超过 3 次自动降级；当前仅为静态常量",
-            "补系统性 beta、停牌/跌停无法止损、流动性风险三条定级，并把风险读数纳入质量门硬否决项",
-            "扩宽参数网格至因子权重/择时/熔断/成本，基准参数取邻域区间共识而非单点",
-            "实现或显式删除未接线的配置项（winsor/standardize/nan_policy、行业权重上限、FACTOR_META.sign、exclude_suspended、min_avg_amount_20d）",
-            "撮合价与涨跌停基准改用未复权价、收益用复权价，分离两套价格序列",
-            "文档与报告的关键数值全部由 result.json 自动渲染，并纳入交付前一致性 CI 校验",
+            "给出 step0.capital 与真实成交额，产出参与率明细、冲击成本曲线与容量上限（计算路径已实现，缺输入）",
+            "补除权除息流水，把成交价也切到未复权口径并同步现金/分红；当前仅涨跌停基准用未复权价",
+            "把单轴扰动扩为含交互项的全因子设计，并增加独立验证段与调仓频率轴",
+            "等价随机对照扩展到『换因子定义』的研究者自由度，而非只替换选股打分",
+            "接入真实宽基指数（中证全指）替换等权样本指数，重估 beta 与 MA200 择时",
         ],
         "note": "两票与 final 均由逐条 VERDICT、进程内自检与真实读数推导；本门只出 VERDICT，报告正文由编排层汇总",
     }
 
 
 def build_full_report(md, cfg, quick: bool = False) -> dict:
+    from .analytics import sensitivity_combo_count
+    from .state import sync_run
+
+    root = Path(__file__).resolve().parent.parent
+    state_info = sync_run(root, cfg)
+    # 两处「人工填常量」改为由真实运行推导，并注入 cfg 供全部下游共用：
+    #   oos_use_count ← state/research_state.json（策略指纹变化自动递增）
+    #   trials_param_grid ← sensitivity_axes 的实际网格点数（FDR 与 DSR 共用）
+    n_grid = sensitivity_combo_count(cfg)
+    cfg = cfg.with_overrides(**{
+        "validation.oos_use_count": state_info["oos_use_count"],
+        "validation.trials_param_grid": n_grid,
+    })
+
     pipe = run_backtest(md, cfg)
     result = pipe["result"]
     baseline = performance(result, cfg)
@@ -302,15 +378,21 @@ def build_full_report(md, cfg, quick: bool = False) -> dict:
               "note": "quick 模式仅跑样本外，质量门不得放行"}
         attr = {"note": "quick 模式跳过归因"}
     else:
-        ov = overfit_suite(md, cfg, result, baseline)
+        ov = overfit_suite(md, cfg, result, baseline, score=pipe["score"])
         attr = attribution(md, cfg, baseline)
     rk = risk_report(result, md, cfg)
     last_w = list(result.weights_history.values())[-1] if result.weights_history else pd.Series(dtype=float)
     oos_headline = (oos_check(result, cfg)["out_of_sample"] or {}).get("sharpe")
     mc_block = ov["suite"].get("3_monte_carlo_deflated_sharpe") or {}
     mc_pct = mc_block.get("baseline_percentile")
-    mc_txt = (f"随机对照 {round(float(mc_pct) * 100, 1)} 分位（对照组不等价，仅作方向性参考）"
-              if mc_pct is not None else "随机对照未执行")
+    if mc_pct is not None:
+        equiv = bool(mc_block.get("control_equivalence"))
+        mc_txt = (f"等价随机对照（{mc_block.get('n_paths')} 次完整引擎重跑）"
+                  f"{round(float(mc_pct) * 100, 1)} 分位，"
+                  f"{'未' if not mc_block.get('significantly_better_than_random') else '已'}显著优于随机"
+                  + ("" if equiv else "（等价性断言失败，读数无效）"))
+    else:
+        mc_txt = "等价随机对照未产出有效分位（等价性断言失败或 quick 模式）"
 
     # ---- 专家团审核整改后新增：可验证的审计输入，硬编码常量一律不进质量门 ----
     ch = getattr(result, "cash_history", None)
@@ -335,8 +417,33 @@ def build_full_report(md, cfg, quick: bool = False) -> dict:
                 "n_attempted": fr["multiple_testing"].get("n_attempted"),
                 "consistent_with_dsr": fr["multiple_testing"].get("n_attempted")
                                        == (mc_block.get("deflated_sharpe") or {}).get("n_trials")},
-        "control_equivalence": {"passed": bool(mc_block.get("control_equivalence")) if mc_block else False,
-                                "note": "简化向量化随机对照，未叠加趋势/择时/熔断/换手/权重约束与两段式撮合"},
+        "control_equivalence": {
+            "passed": bool(mc_block.get("control_equivalence")) if mc_block else False,
+            "evidence": (mc_block.get("equivalence_evidence") if mc_block else None),
+            "n_paths": mc_block.get("n_paths") if mc_block else 0,
+            "note": (mc_block.get("note") if mc_block else "quick 模式未执行随机对照")},
+        "oos_state": state_info,
+        "config_wiring": {
+            **fr.get("config_wiring", {}),
+            "weights": getattr(pipe["weights_fn"], "wiring_stats", {}),
+            "raw_price_basis": getattr(md, "price_basis", "unknown"),
+            "declared_items": [
+                "factors.winsor / standardize / nan_policy / min_cross_section",
+                "FACTOR_META.sign（预注册方向，禁止据样本反号）",
+                "strategy.max_industry_weight（数据缺口下空转）",
+                "universe.exclude_st / exclude_suspended / min_listed_days / min_avg_amount_20d",
+                "strategy.market_timing.proxy（非法值直接报错，不静默回退）",
+                "cost.impact_model（显式登记为未建模，非遗漏）",
+                "data.raw_prices_csv（未复权涨跌停基准）",
+            ],
+        },
+        "sensitivity": {
+            "n_combos": (ov["suite"].get("2_parameter_sensitivity") or {}).get("n_combos"),
+            "consensus_sharpe": (ov["suite"].get("2_parameter_sensitivity") or {}).get("consensus_sharpe"),
+            "point_estimate_suspicion": (ov["suite"].get("2_parameter_sensitivity") or {}).get("point_estimate_suspicion"),
+        },
+        "capacity": rk["capacity"],
+        "beta": rk["beta"],
         "risk_pricing": {"passed": bool(baseline.get("max_drawdown", -1) > -0.30
                                         and (baseline.get("calmar") or 0) >= 0.5
                                         and (baseline.get("kurtosis") or 99) < 10),
@@ -351,19 +458,41 @@ def build_full_report(md, cfg, quick: bool = False) -> dict:
     }
 
     elems = risk_elements({
-        "performance": baseline, "overfit": ov, "factor_research": fr,
+        "performance": baseline, "overfit": ov, "factor_research": fr, "risk": rk,
+        "audit": {"control_equivalence": {"passed": bool(mc_block.get("control_equivalence"))},
+                  "oos_state": state_info},
     })
+    beta = rk.get("beta", {})
+    cap = rk.get("capacity", {})
+    hypo = rk.get("stress", {}).get("hypothetical", {})
     elems += [
         {"item": "风险收益比与尾部风险", "reading": (
             f"最大回撤 {baseline.get('max_drawdown')} / Calmar {baseline.get('calmar')} / "
             f"峰度 {baseline.get('kurtosis')} / 夏普 {baseline.get('sharpe')}（rf=0）"),
          "level": "重大", "confidence": "高",
+         "tradeoff": "峰度极高说明尾部由少数极端日主导，夏普不足以刻画真实风险",
          "if_risk": "若 MDD<-30% 或 Calmar<0.5 → 判定为不可通过补数据消除的实盘否决项，禁止任何规模建议"},
-        {"item": "系统性 beta / 无法止损 / 流动性", "reading": (
-            f"纯多头仅靠 MA200 降至 50% 敞口；被拒订单 {baseline.get('blocked_orders')} 笔；"
-            "无参与率上限、冲击成本未建模、行业上限因 industry=UNKNOWN 空转"),
-         "level": "较大", "confidence": "中",
-         "if_risk": "接入真实规模前补参与率上限与冲击成本曲线；连续停牌/跌停情景计入尾部并给退出预案"},
+        {"item": "系统性 beta 暴露", "reading": (
+            f"OLS beta={beta.get('beta')} / R²={beta.get('r_squared')} / "
+            f"市场代理={beta.get('market_proxy')}；纯多头、无对冲，MA200 择时只降敞口不消除 beta"),
+         "level": "较大" if (beta.get("beta") or 0) > 0.5 else "一般", "confidence": "中",
+         "tradeoff": "等权样本指数只有 20 只成分，不能代表中证全指；beta 读数仅作量级参考",
+         "if_risk": "beta>0.5 且 R²>0.5 时，须把系统性下跌列为独立压力情景；接入真实宽基指数后重估，"
+                    "若需降低 beta 须另立对冲假设并重走全流程（本工程不含衍生品）"},
+        {"item": "停牌 / 跌停无法止损", "reading": (
+            f"被拒订单 {baseline.get('blocked_orders')} 笔 / 留痕未完成目标 {baseline.get('unfilled_orders')} 项；"
+            f"连续 2 跌停模型估计 {(hypo.get('连续跌停') or {}).get('static_estimate')}；"
+            "unfilled carry 已在下一个 pending 重试，但不保证止损成交"),
+         "level": "较大", "confidence": "高",
+         "tradeoff": "回测按开盘价成交，未建模集合竞价排队与封单，实盘无法卖出的概率更高",
+         "if_risk": "若任一标的连续 2 日不可卖，触发人工复核并给出退出预案；把该情景计入尾部而不是当作可忽略的撮合噪声"},
+        {"item": "流动性与容量", "reading": (
+            f"capacity_report 状态={cap.get('status')}；amount 为成交额近似值；"
+            "参与率上限与冲击成本曲线已实现但需 capital 输入；行业权重上限因 industry=UNKNOWN 空转"),
+         "level": "较大", "confidence": "高",
+         "tradeoff": "近似成交额无法反映真实盘口深度；线性冲击系数是显式假设不是实测",
+         "if_risk": "给出资金规模与真实成交额后逐标的检查 participation>10% 的越限项；"
+                    "未补齐前禁止输出容量上限数字或实盘规模建议"},
     ]
 
     rep = {
@@ -380,6 +509,29 @@ def build_full_report(md, cfg, quick: bool = False) -> dict:
             "data_gaps": cfg.get("data.known_gaps", []),
             "sample": md.summary(),
             "quick_mode": quick,
+            "preregistration": {
+                "hash": state_info["preregistration_hash"],
+                "hypothesis": state_info["hypothesis"],
+                "frozen": True,
+                "oos_use_count": state_info["oos_use_count"],
+                "oos_max_uses": state_info["oos_max_uses"],
+                "strategy_hash": state_info["strategy_hash"],
+                "note": "预注册与策略指纹存于 state/research_state.json，参数回改自动留痕并递增计数",
+            },
+            "development": {
+                "round": "v3 · 专家团审核整改路线图开发闭环",
+                "closed": [
+                    "等价随机对照：200 次复用完整权重函数/择时/熔断/两段式撮合的真实引擎重跑，等价性由逐日净值断言证明",
+                    "配置项接线：winsor / standardize / nan_policy / sign / 行业上限 / universe / impact_model / proxy 全部由 config 驱动",
+                    "预注册与样本外计数：策略指纹 hash、冻结假设、回改自动递增与超上限降级",
+                    "参数网格：7 轴单轴扰动 + 邻域共识基准，试验数由真实网格推导并统一 FDR/DSR 口径",
+                    "风险定级：系统性 beta OLS、停牌/跌停无法止损、流动性/容量三条独立项含 IF_RISK",
+                    "容量评估：capital 给值即算参与率/线性冲击/容量上限，null 时显式 not_evaluated",
+                    "双价格口径：抓取 42093 行未复权真实日线，涨跌停基准改用未复权前收与开盘",
+                    "一致性 CI：quantlab verify + GitHub Actions（本项由 CI 交付，见 .github/workflows/ci.yml）",
+                ],
+                "still_open": "全A点时间面板、真实成交额与资金规模、除权除息流水、交互项网格、真实宽基指数",
+            },
         },
         "one_line_conclusion": (
             f"不具备实盘条件：经专家团审核已修复引擎级致命缺陷并重跑全流程，但实测合成因子 "
@@ -400,7 +552,7 @@ def build_full_report(md, cfg, quick: bool = False) -> dict:
                         "buffer_multiple": cfg.get("strategy.buffer_multiple")},
             "rebalance": "月末最后一个交易日收盘出信号，T+1 开盘执行",
             "concentration_last": weight_concentration(last_w),
-            "capacity": "本次不评估（用户选择仅研究、不设规模）",
+            "capacity": f"capacity_report={rk['capacity']['status']}（capital=null；参与率/冲击/容量上限计算路径已实现，缺输入）",
             "degrade_fuse": {"levels": cfg.get("risk.dd_fuse_levels"),
                              "recovery_dd": cfg.get("risk.recovery_dd"),
                              "triggered": pipe["fuse"].events},

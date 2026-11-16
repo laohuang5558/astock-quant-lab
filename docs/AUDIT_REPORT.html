@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <meta name="metric-fingerprint" content="e819989972c994d1">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A股多因子＋趋势策略 · 专家团联合审核报告</title>
@@ -42,7 +43,7 @@ details{margin:8px 0}summary{cursor:pointer;font-weight:600;color:var(--blue);fo
 <body><div class="wrap">
 <header>
 <h1>A股多因子＋趋势策略 · 专家团联合审核报告</h1>
-<div class="meta"><span class="badge">专家团联合审核</span><span class="badge">research-only</span> 生成时间 2026-11-16 19:12:07 ｜ 审核基准 v1：output/result_v1_pre_audit.json ｜ 整改复核 v2：output/result.json</div>
+<div class="meta"><span class="badge">专家团联合审核</span><span class="badge">research-only</span> 生成时间 2026-11-16 19:38:46 ｜ 审核基准 v1：output/result_v1_pre_audit.json ｜ 整改复核 v2：output/result_v2_post_audit.json</div>
 </header>
 
 <div class="card verdict">
@@ -167,11 +168,27 @@ details{margin:8px 0}summary{cursor:pointer;font-weight:600;color:var(--blue);fo
 <h2>6 · 交付物与可复核性</h2>
 <ul>
 <li><code>output/result_v1_pre_audit.json</code>：v1 审核基准存档（已作废，仅供对照）</li>
-<li><code>output/result.json</code> / <code>SUMMARY.md</code> / <code>equity.csv</code> / <code>trades.csv</code>：v2 全量结果，已纳入版本控制</li>
+<li><code>output/result_v2_post_audit.json</code>：审核整改后 v2 快照（固定存档）</li>
+<li><code>output/result.json</code> / <code>SUMMARY.md</code> / <code>equity.csv</code> / <code>trades.csv</code>：v3 当前全量结果，已纳入版本控制</li>
 <li><code>docs/AUDIT_PANEL.md</code>：本报告 Markdown 版；<code>docs/QUALITY_GATE.md</code>：质量门与风险定级</li>
-<li>15 项单元测试（<code>python -m quantlab selftest</code>），含现金/敞口、T+1、熔断状态机、全局峰值口径四项新增构造性测试</li>
+<li>25 项单元测试（<code>python -m quantlab selftest</code>），含等价对照、预注册、配置接线、容量、双价格等新增构造性测试</li>
 <li>本报告全部数值由脚本从结果文件注入，不含手写读数；零内联 JS、零外部 CDN 依赖</li>
 </ul>
+</div>
+
+<div class="card">
+<h2>7 · v3 开发闭环（审核路线图的工程侧执行结果）</h2>
+<p>本节读数来自当前 <code>output/result.json</code>，与上文 v1/v2 历史对照分开。<b>开发闭环不等于结论放行</b>：v3 质量门仍为 <b>不放行</b>。</p>
+<table><tr><th>读数</th><th>v3 当前</th></tr>
+<tr><td>总收益 / 夏普 / 最大回撤</td><td>52.04% / 0.3477 / -60.19%</td></tr>
+<tr><td>等价随机对照</td><td>复用完整管线重跑 200 次；等价性断言=True；策略分位=31.5 分位</td></tr>
+<tr><td>单元测试</td><td>25 项</td></tr>
+<tr><td>质量门</td><td>不放行（成立 16 / 不成立 5 / 存疑 2）</td></tr>
+</table>
+<h3>已闭环（有代码、单测与重跑证据）</h3>
+<ul><li>等价随机对照：200 次复用完整权重函数/择时/熔断/两段式撮合的真实引擎重跑，等价性由逐日净值断言证明</li><li>配置项接线：winsor / standardize / nan_policy / sign / 行业上限 / universe / impact_model / proxy 全部由 config 驱动</li><li>预注册与样本外计数：策略指纹 hash、冻结假设、回改自动递增与超上限降级</li><li>参数网格：7 轴单轴扰动 + 邻域共识基准，试验数由真实网格推导并统一 FDR/DSR 口径</li><li>风险定级：系统性 beta OLS、停牌/跌停无法止损、流动性/容量三条独立项含 IF_RISK</li><li>容量评估：capital 给值即算参与率/线性冲击/容量上限，null 时显式 not_evaluated</li><li>双价格口径：抓取 42093 行未复权真实日线，涨跌停基准改用未复权前收与开盘</li><li>一致性 CI：quantlab verify + GitHub Actions（本项由 CI 交付，见 .github/workflows/ci.yml）</li></ul>
+<h3>仍未决</h3>
+<p class="small">全A点时间面板、真实成交额与资金规模、除权除息流水、交互项网格、真实宽基指数。这些项依赖本环境物理不含的数据、尚未给出的资金规模假设或另立研究假设；填占位数值会构成编造，故不伪造「已解决」。</p>
 </div>
 
 <footer>

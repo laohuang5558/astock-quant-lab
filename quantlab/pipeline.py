@@ -7,7 +7,7 @@ from .risk import DrawdownFuse
 from .strategy import build_weight_function, rebalance_dates
 
 
-def run_backtest(md, cfg):
+def run_backtest(md, cfg, score_override=None):
     """返回 dict：result / score / factor_detail / fuse / weights_fn。
 
     熔断即时生效：DrawdownFuse.exposure 发生变化的**当日**置位
@@ -15,8 +15,16 @@ def run_backtest(md, cfg):
     生成一次新目标 pending，T+1 开盘执行——不再等到月末调仓日（最长滞后约 20 个
     交易日）。weights_fn(date) 基于 score/eligible/trend/mexpo 的 T 日及之前数据，
     支持任意交易日、无未来函数；market_return 取等权样本指数当日收益，收盘可知。
+
+    score_override：等价随机对照专用。传入一张与真实 score 同形状、同 NaN 结构的
+    得分面板时，跳过因子计算，但**完整保留** build_weight_function（buffer / 换手 /
+    单标的与行业上限 / 趋势过滤 / MA200 择时）、DrawdownFuse、on_mark 强制调仓与
+    BacktestEngine 两段式撮合。唯一差异是「选股打分值」——这是等价对照的可证基础。
     """
-    score, detail = build_score(md, cfg)
+    if score_override is None:
+        score, detail = build_score(md, cfg)
+    else:
+        score, detail = score_override, {}
     fuse = DrawdownFuse(cfg)
     wf = build_weight_function(md, cfg, score, lambda d: fuse.exposure)
     dates = rebalance_dates(md, cfg.get("period.start"), cfg.get("period.end"))
@@ -38,29 +46,29 @@ def run_backtest(md, cfg):
             "fuse": fuse, "weights_fn": wf, "rebalance_dates": dates}
 
 
-def run_backtest_with_random_weights(md, cfg, seed: int = 0):
-    """蒙特卡洛对照组：随机等权选股，其余约束与基准完全一致。"""
+def build_random_score(score: "pd.DataFrame", seed: int):
+    """构造与真实 score 同 index/columns、同 NaN 结构的随机得分面板。
+
+    随机值经同一套横截面 rank→Z-score 标准化，保证分布形状与基准可比；
+    NaN 掩码逐日复制，使「可选标的集合」完全一致（否则对照会混入不可交易标的）。
+    """
     import numpy as np
     import pandas as pd
-    from .engine import BacktestEngine
-    from .strategy import rebalance_dates
+    from .factors import cross_section_rank_zscore
 
     rng = np.random.default_rng(seed)
-    top_n = int(cfg.get("strategy.top_n", 8))
-    elig = md.eligible
-    state = {"last": pd.Series(dtype=float)}
+    noise = pd.DataFrame(rng.random(score.shape), index=score.index, columns=score.columns)
+    noise = noise.where(score.notna())
+    z = cross_section_rank_zscore(noise, min_names=1)
+    return z.where(score.notna())
 
-    def random_wf(date: str) -> pd.Series:
-        if date not in elig.index:
-            return state["last"]
-        pool = elig.loc[date][elig.loc[date]].index.tolist()
-        if not pool:
-            return state["last"]
-        picks = rng.choice(pool, size=min(top_n, len(pool)), replace=False)
-        w = pd.Series(1.0 / len(picks), index=picks, dtype=float)
-        state["last"] = w
-        return w
 
-    dates = rebalance_dates(md, cfg.get("period.start"), cfg.get("period.end"))
-    engine = BacktestEngine(md, cfg, random_wf, dates)
-    return engine.run()
+def run_backtest_with_random_weights(md, cfg, seed: int = 0, score_template=None):
+    """等价随机对照：只换选股打分，其余全部复用 run_backtest 管线。
+
+    保留此函数以兼容旧调用方；内部不再自建简化 weights_fn / 简化引擎。
+    """
+    if score_template is None:
+        score_template, _ = build_score(md, cfg)
+    rnd = build_random_score(score_template, seed)
+    return run_backtest(md, cfg, score_override=rnd)["result"]

@@ -1,17 +1,22 @@
 """专家团联合审核报告生成器。
 
-数值全部来自 output/result.json（整改后 v2）与 output/result_v1_pre_audit.json
-（审核基准 v1），定性结论为 6 位专家委员的独立评审意见汇总。禁止手工转录读数。
+数值全部来自 output/result_v1_pre_audit.json（审核基准 v1）、
+output/result_v2_post_audit.json（审核整改快照 v2）与 output/result.json（当前 v3）。
+定性结论为 6 位专家委员的独立评审意见汇总。禁止手工转录读数。
 """
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 from string import Template
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from quantlab.fingerprint import metric_fingerprint, stamp_html  # noqa: E402
 
 PANEL = [
     {"role": "量化工作流主席", "skill": "quant-workflow", "eng": "有条件可交付", "strat": "不放行",
@@ -269,11 +274,27 @@ details{margin:8px 0}summary{cursor:pointer;font-weight:600;color:var(--blue);fo
 <h2>6 · 交付物与可复核性</h2>
 <ul>
 <li><code>output/result_v1_pre_audit.json</code>：v1 审核基准存档（已作废，仅供对照）</li>
-<li><code>output/result.json</code> / <code>SUMMARY.md</code> / <code>equity.csv</code> / <code>trades.csv</code>：v2 全量结果，已纳入版本控制</li>
+<li><code>output/result_v2_post_audit.json</code>：审核整改后 v2 快照（固定存档）</li>
+<li><code>output/result.json</code> / <code>SUMMARY.md</code> / <code>equity.csv</code> / <code>trades.csv</code>：v3 当前全量结果，已纳入版本控制</li>
 <li><code>docs/AUDIT_PANEL.md</code>：本报告 Markdown 版；<code>docs/QUALITY_GATE.md</code>：质量门与风险定级</li>
-<li>15 项单元测试（<code>python -m quantlab selftest</code>），含现金/敞口、T+1、熔断状态机、全局峰值口径四项新增构造性测试</li>
+<li>$v3_tests 项单元测试（<code>python -m quantlab selftest</code>），含等价对照、预注册、配置接线、容量、双价格等新增构造性测试</li>
 <li>本报告全部数值由脚本从结果文件注入，不含手写读数；零内联 JS、零外部 CDN 依赖</li>
 </ul>
+</div>
+
+<div class="card">
+<h2>7 · v3 开发闭环（审核路线图的工程侧执行结果）</h2>
+<p>本节读数来自当前 <code>output/result.json</code>，与上文 v1/v2 历史对照分开。<b>开发闭环不等于结论放行</b>：v3 质量门仍为 <b>$v3_gate</b>。</p>
+<table><tr><th>读数</th><th>v3 当前</th></tr>
+<tr><td>总收益 / 夏普 / 最大回撤</td><td>$v3_total / $v3_sharpe / $v3_mdd</td></tr>
+<tr><td>等价随机对照</td><td>复用完整管线重跑 $v3_paths 次；等价性断言=$v3_equiv；策略分位=$v3_pct</td></tr>
+<tr><td>单元测试</td><td>$v3_tests 项</td></tr>
+<tr><td>质量门</td><td>$v3_gate（$v3_counts）</td></tr>
+</table>
+<h3>已闭环（有代码、单测与重跑证据）</h3>
+<ul>$v3_closed</ul>
+<h3>仍未决</h3>
+<p class="small">$v3_open。这些项依赖本环境物理不含的数据、尚未给出的资金规模假设或另立研究假设；填占位数值会构成编造，故不伪造「已解决」。</p>
 </div>
 
 <footer>
@@ -331,9 +352,27 @@ P1 项依赖本环境物理不含的数据、用户尚未给出的资金规模�
 ## 6 · 可复核性
 
 - `output/result_v1_pre_audit.json`：v1 审核基准存档（已作废，仅供对照）
-- `output/result.json`、`SUMMARY.md`、`equity.csv`、`trades.csv`：v2 全量结果，已纳入版本控制
-- 15 项单元测试（新增现金/敞口、T+1、熔断状态机、全局峰值 4 项）
+- `output/result_v2_post_audit.json`：审核整改后 v2 快照（固定存档）
+- `output/result.json`、`SUMMARY.md`、`equity.csv`、`trades.csv`：v3 当前全量结果，已纳入版本控制
+- $v3_tests 项单元测试（新增等价对照、预注册、配置接线、容量、双价格等构造性测试）
 - 本报告全部数值由 `scripts/build_audit_report.py` 从结果文件注入，无手写读数
+
+## 7 · v3 开发闭环（审核路线图的工程侧执行结果）
+
+> 本节读数取自当前 `output/result.json`，与上文 v1/v2 历史对照分开。**开发闭环不等于结论放行**：v3 质量门仍为 **$v3_gate**（$v3_counts）。
+
+| 读数 | v3 当前 |
+|---|---|
+| 总收益 / 夏普 / 最大回撤 | $v3_total / $v3_sharpe / $v3_mdd |
+| 等价随机对照 | 复用完整管线重跑 $v3_paths 次；等价性断言=$v3_equiv；策略分位=$v3_pct |
+| 单元测试 | $v3_tests 项 |
+| 质量门 | $v3_gate |
+
+**已闭环（有代码、单测与重跑证据）**
+
+$v3_closed_md
+
+**仍未决**：$v3_open。依赖本环境物理不含的数据、尚未给出的资金规模假设或另立研究假设；填占位数值会构成编造，故不伪造「已解决」。
 
 ---
 
@@ -344,9 +383,16 @@ P1 项依赖本环境物理不含的数据、用户尚未给出的资金规模�
 
 
 def render(outdir: Path, top_html: Path | None = None) -> dict:
+    # v1 = 审核前基线，v2 = 审核整改后快照（固定存档，不随后续开发变化），
+    # v3 = 当前 result.json（开发闭环后）。三份分开读，避免把 v3 误标成 v2。
     v1 = load(ROOT / "output" / "result_v1_pre_audit.json")
-    v2 = load(ROOT / "output" / "result.json")
-    p2, g2, a2 = v2["performance"], v2["quality_gate"], v2["audit"]
+    v2 = load(ROOT / "output" / "result_v2_post_audit.json")
+    v3 = load(ROOT / "output" / "result.json")
+    p2, g2 = v2["performance"], v2["quality_gate"]
+    p3, g3, a3 = v3["performance"], v3["quality_gate"], v3["audit"]
+    dev = v3["meta"].get("development", {})
+    mc3 = (v3["overfit"]["suite"].get("3_monte_carlo_deflated_sharpe") or {})
+    closed = dev.get("closed", [])
     generated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     panel_rows = "\n".join(
@@ -387,12 +433,25 @@ def render(outdir: Path, top_html: Path | None = None) -> dict:
     ctx = dict(
         title="A股多因子＋趋势策略 · 专家团联合审核报告",
         generated=generated,
-        v1_file="output/result_v1_pre_audit.json", v2_file="output/result.json",
+        v1_file="output/result_v1_pre_audit.json",
+        v2_file="output/result_v2_post_audit.json",
         v2_total=fmt(p2["total_return"], pct=True), v2_sharpe=fmt(p2["sharpe"]),
         v2_mdd=fmt(p2["max_drawdown"], pct=True), v2_calmar=fmt(p2["calmar"]),
         v2_kurt=fmt(p2["kurtosis"]), v2_eng=g2["engineering_gate"],
         v2_final=g2["final_verdict"],
         v2_counts=f"成立 {counts['成立']} / 不成立 {counts['不成立']} / 存疑 {counts['存疑']}",
+        v3_tests=a3.get("selftest", {}).get("tests_run"),
+        v3_total=fmt(p3["total_return"], pct=True), v3_sharpe=fmt(p3["sharpe"]),
+        v3_mdd=fmt(p3["max_drawdown"], pct=True),
+        v3_equiv=mc3.get("control_equivalence"),
+        v3_paths=mc3.get("n_paths"),
+        v3_pct=(f"{mc3['baseline_percentile'] * 100:.1f} 分位"
+                if mc3.get("baseline_percentile") is not None else "未产出有效分位"),
+        v3_gate=g3["final_verdict"],
+        v3_counts=f"成立 {g3['counts']['成立']} / 不成立 {g3['counts']['不成立']} / 存疑 {g3['counts']['存疑']}",
+        v3_closed="".join(f"<li>{x}</li>" for x in closed),
+        v3_closed_md="\n".join(f"- {x}" for x in closed),
+        v3_open=dev.get("still_open", "见 quality_gate.followups"),
         n_findings=len(FINDINGS),
         n_fixed=sum(1 for x in FINDINGS if x[5] == "已修"),
         n_open=len(ROADMAP_OPEN),
@@ -405,11 +464,16 @@ def render(outdir: Path, top_html: Path | None = None) -> dict:
     outdir.mkdir(parents=True, exist_ok=True)
     hp = outdir / "AUDIT_REPORT.html"
     mp = outdir / "AUDIT_PANEL.md"
-    hp.write_text(HTML_TPL.substitute(ctx), encoding="utf-8")
+    html = HTML_TPL.substitute(ctx)
+    hp.write_text(html, encoding="utf-8")
     mp.write_text(MD_TPL.substitute(ctx), encoding="utf-8")
-    paths = {"audit_html": str(hp), "audit_md": str(mp)}
+    fp = metric_fingerprint(v3)
+    stamp_html(hp, fp)
+    paths = {"audit_html": str(hp), "audit_md": str(mp), "metric_fingerprint": fp}
     if top_html:
-        top_html.write_text(HTML_TPL.substitute(ctx), encoding="utf-8")
+        top_html.parent.mkdir(parents=True, exist_ok=True)
+        top_html.write_text(html, encoding="utf-8")
+        stamp_html(top_html, fp)
         paths["top_html"] = str(top_html)
     return paths
 

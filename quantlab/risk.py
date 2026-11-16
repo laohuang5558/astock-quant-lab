@@ -212,6 +212,90 @@ def correlation_shift(md, worst_n: int = 40) -> dict:
     }
 
 
+def beta_report(result, md) -> dict:
+    """系统性 beta：策略日收益对等权样本指数日收益做 OLS。
+
+    市场代理为 md.ret 的横截面均值（与 market_proxy / pipeline 的 mkt_ret 同口径）；
+    纯多头无对冲时 beta 接近 1 意味着净值几乎完全暴露于市场，MA200 择时只降敞口、不消除 beta。
+    """
+    r = result.returns.dropna()
+    m = md.ret.mean(axis=1).fillna(0.0).reindex(r.index).fillna(0.0)
+    x, y = m.to_numpy(dtype=float), r.to_numpy(dtype=float)
+    if len(x) < 30 or float(np.var(x)) < 1e-16:
+        return {"beta": None, "r_squared": None, "alpha_daily": None,
+                "market_proxy": "equal_weight_sample", "n_obs": int(len(x)),
+                "note": "样本不足或市场收益无波动，beta 不可估计"}
+    beta = float(np.cov(x, y, ddof=1)[0, 1] / np.var(x, ddof=1))
+    alpha = float(y.mean() - beta * x.mean())
+    corr = float(np.corrcoef(x, y)[0, 1])
+    return {
+        "beta": round(beta, 4), "alpha_daily": round(alpha, 8),
+        "r_squared": round(corr ** 2, 4), "market_proxy": "equal_weight_sample",
+        "n_obs": int(len(x)),
+        "note": "OLS r_strategy = alpha + beta*r_market + eps；市场代理=等权样本指数，非中证全指",
+    }
+
+
+def capacity_report(result, md, cfg) -> dict:
+    """容量评估：capital=null 时显式 not_evaluated；给值时按参与率上限与线性冲击模型计算。
+
+    绝不把研究记账单位 validation.research_capital_cny 当作资金规模。
+    """
+    capital = cfg.get("step0.capital")
+    if capital is None:
+        return {
+            "status": "not_evaluated",
+            "capital_cny": None,
+            "required_inputs": [
+                "step0.capital（真实资金规模）",
+                "单标的参与率上限（默认 capacity.max_participation=10%）",
+                "真实成交额（当前 amount 为 volume×100×典型价的近似值）",
+                "冲击成本校准数据（当前 impact_k 为显式假设，非实测）",
+            ],
+            "note": "用户选择『仅研究、不设规模』；工程侧已实现计算路径，输入到位即可出结论，不以占位数值冒充容量结论",
+        }
+    cap_value = float(capital)
+    part_cap = float(cfg.get("capacity.max_participation", 0.10))
+    k = float(cfg.get("capacity.impact_k", 0.5))
+    amt20 = md.amount.rolling(20, min_periods=10).mean()
+    wrows = [w for w in (result.weights_history or {}).values() if isinstance(w, pd.Series)]
+    if wrows:
+        avg_w = pd.concat(wrows, axis=1).mean(axis=1).fillna(0.0)
+    else:
+        avg_w = pd.Series(dtype=float)
+    active = avg_w[avg_w > 1e-8]
+    if active.empty or amt20.empty:
+        return {"status": "insufficient_data", "capital_cny": cap_value,
+                "note": "无有效持仓权重或成交额面板，容量不可计算"}
+    per_code, limits = [], []
+    recent_amt = amt20.iloc[-250:].median().reindex(active.index)
+    for code, w in active.items():
+        adv = float(recent_amt.get(code, np.nan)) if np.isfinite(float(recent_amt.get(code, np.nan))) else None
+        if adv is None or adv <= 0:
+            continue
+        order = cap_value * float(w)
+        participation = order / adv
+        impact_rate = k * participation
+        limits.append(adv * part_cap / float(w))
+        per_code.append({"code": str(code), "avg_weight": round(float(w), 4),
+                         "adv20_median_cny": round(adv, 2),
+                         "order_value_cny": round(order, 2),
+                         "participation": round(float(participation), 6),
+                         "impact_rate_linear_model": round(float(impact_rate), 6)})
+    breaches = [r for r in per_code if r["participation"] > part_cap]
+    return {
+        "status": "evaluated",
+        "capital_cny": cap_value,
+        "max_participation": part_cap,
+        "impact_k_assumption": k,
+        "impact_formula": "impact_rate = impact_k × (capital × weight / ADV20)",
+        "per_code": per_code,
+        "capacity_upper_bound_cny": round(float(min(limits)), 2) if limits else None,
+        "participation_breaches": [r["code"] for r in breaches],
+        "note": "线性冲击为模型假设而非实测；ADV20 用近似成交额；容量上限=min(ADV20×参与率上限/权重)",
+    }
+
+
 def risk_report(result, md, cfg) -> dict:
     r = result.returns
     dd = max_drawdown_detail(result.equity)
@@ -250,5 +334,7 @@ def risk_report(result, md, cfg) -> dict:
         "stress": {"historical": historical_scenarios(result.equity, windows),
                    "hypothetical": hypo},
         "correlation_concentration": correlation_shift(md),
+        "beta": beta_report(result, md),
+        "capacity": capacity_report(result, md, cfg),
         "data_gaps": cfg.get("data.known_gaps", []),
     }

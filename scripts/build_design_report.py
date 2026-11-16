@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from quantlab.fingerprint import metric_fingerprint, stamp_html  # noqa: E402
 
 
 def fmt_pct(x, digits=2):
@@ -56,8 +60,8 @@ def build(rep: dict, eq: pd.Series) -> str:
 
     mc_bars = {
         "labels": ["随机均值", "随机 P95", "策略基准", "DSR"],
-        "values": [mc["random_sharpe_mean"], mc["random_sharpe_p95"],
-                   mc["baseline_sharpe"], mc["deflated_sharpe"]["dsr"]],
+        "values": [mc.get("random_sharpe_mean"), mc.get("random_sharpe_p95"),
+                   mc.get("baseline_sharpe"), (mc.get("deflated_sharpe") or {}).get("dsr")],
     }
 
     hist = rk["stress"]["historical"]
@@ -96,6 +100,18 @@ def build(rep: dict, eq: pd.Series) -> str:
     followups = "".join(f"<li>{x}</li>" for x in gate["followups"])
     gaps = "".join(f"<li>{x}</li>" for x in rep["meta"]["data_gaps"])
     comp = fr["composite_ic"]
+    sens_note = (
+        f"单轴扰动 {sens.get('n_combos')} 组 / {len(sens.get('axes', []))} 个轴（含因子权重、择时、熔断、成本）；"
+        f"夏普极差 {fmt_num(sens.get('sharpe_spread'))}，邻域共识夏普 {fmt_num(sens.get('consensus_sharpe'))}，"
+        f"单点-共识差 {fmt_num(sens.get('point_minus_consensus'))}；"
+        f"悬崖式衰减={'是' if sens.get('cliff_like_decay') else '否'}。"
+        "热力图仅展示 top_n × ma_long 两轴，其余轴读数见 result.json。")
+    mc_note = (
+        f"等价随机对照：复用完整权重函数 / MA200 择时 / 回撤熔断 / 两段式撮合，"
+        f"{mc.get('n_paths')} 次真实引擎重跑；等价性断言={mc.get('control_equivalence')}；"
+        f"策略基准排 {fmt_pct(mc.get('baseline_percentile'), 1)} 分位，"
+        f"DSR={fmt_num((mc.get('deflated_sharpe') or {}).get('dsr'))}；"
+        f"{'已' if mc.get('significantly_better_than_random') else '未'}显著优于随机对照。")
 
     DATA = {
         "dates": dates, "nav": nav, "dd": dd,
@@ -139,10 +155,11 @@ def build(rep: dict, eq: pd.Series) -> str:
         comp_pos=fmt_pct(comp["positive_ratio"]),
         fdr_n=fr["multiple_testing"]["n_rejected"],
         fdr_cut=fr["multiple_testing"]["cutoff"],
-        mc_pct=fmt_pct(mc["baseline_percentile"], 1),
-        mc_paths=mc["n_paths"],
-        dsr=fmt_num(mc["deflated_sharpe"]["dsr"]),
-        sens_spread=fmt_num(sens["sharpe_spread"]),
+        mc_pct=fmt_pct(mc.get("baseline_percentile"), 1),
+        mc_paths=mc.get("n_paths", 0),
+        dsr=fmt_num((mc.get("deflated_sharpe") or {}).get("dsr")),
+        sens_spread=fmt_num(sens.get("sharpe_spread")),
+        sens_note=sens_note, mc_note=mc_note,
         var95=fmt_pct(rk["tail"]["0.95"]["var"]),
         cvar95=fmt_pct(rk["tail"]["0.95"]["cvar"]),
         var99=fmt_pct(rk["tail"]["0.99"]["var"]),
@@ -338,9 +355,9 @@ code {{ background:#f0f3f7; padding:1px 5px; border-radius:4px; font-size:12.5px
 <div class="card">
 <div class="grid2">
   <div><h3>② 参数敏感性 · 夏普邻域网格</h3><div id="chartHeat" class="chart" style="height:280px"></div>
-       <p class="note">top_n ∈ {{5,8,12}} × ma_long ∈ {{90,120,160}}；夏普极差 {sens_spread}，无悬崖式衰减。</p></div>
+       <p class="note">{sens_note}</p></div>
   <div><h3>③ 蒙特卡洛 / Deflated Sharpe</h3><div id="chartMC" class="chart" style="height:280px"></div>
-       <p class="note">{mc_paths} 条随机选股路径（同等调仓频率/持仓数/成本）；策略基准排 {mc_pct} 分位，DSR={dsr}。</p></div>
+       <p class="note">{mc_note}</p></div>
 </div>
 <h3>④ 成本敏感性</h3>
 <div id="chartCost" class="chart" style="height:230px"></div>
@@ -510,7 +527,9 @@ def main() -> int:
         out = ROOT / out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
-    print(f"WROTE {out} ({len(html):,} chars)")
+    fp = metric_fingerprint(rep)
+    stamp_html(out, fp)
+    print(f"WROTE {out} ({len(html):,} chars) fingerprint={fp}")
     return 0
 
 

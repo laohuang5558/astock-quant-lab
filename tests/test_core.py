@@ -260,5 +260,144 @@ class TestStressGlobalPeak(unittest.TestCase):
                         "全局峰值口径不应在窗口内被重置")
 
 
+class TestEquivalentRandomControl(unittest.TestCase):
+    """等价随机对照的核心断言：override 路径必须与基准逐值一致。"""
+
+    def test_score_override_reproduces_baseline(self):
+        md = synth(200)
+        cfg = CFG.with_overrides(**{"period.start": "2022-01-01"})
+        base = run_backtest(md, cfg)
+        same = run_backtest(md, cfg, score_override=base["score"])
+        self.assertTrue(np.allclose(base["result"].equity.to_numpy(),
+                                    same["result"].equity.to_numpy(), rtol=0, atol=1e-6),
+                        "真实 score 经 override 重跑必须与基准净值一致，否则对照不等价")
+        self.assertAlmostEqual(base["result"].cost_total, same["result"].cost_total, places=6)
+
+    def test_random_score_same_mask_reproducible(self):
+        from quantlab.pipeline import build_random_score
+        md = synth(200)  # mom_120 需要 125 个交易日，短样本会让合成得分整行 NaN
+        score, _ = __import__("quantlab.factors", fromlist=["build_score"]).build_score(md, CFG)
+        self.assertGreater(int(score.notna().to_numpy().sum()), 0, "合成得分不应全为 NaN")
+        a = build_random_score(score, seed=42)
+        b = build_random_score(score, seed=42)
+        c = build_random_score(score, seed=43)
+        self.assertTrue(a.notna().equals(score.notna()), "随机得分必须复制真实 NaN 掩码")
+        self.assertTrue(np.allclose(a.fillna(0).to_numpy(), b.fillna(0).to_numpy()))
+        self.assertFalse(np.allclose(a.fillna(0).to_numpy(), c.fillna(0).to_numpy()))
+
+
+class TestPreregistrationState(unittest.TestCase):
+    """样本外使用次数：指纹变化自动递增，预注册冻结，超上限降级。"""
+
+    def test_sync_and_force(self):
+        import tempfile
+        from quantlab import state as rs
+        with tempfile.TemporaryDirectory() as td:
+            s1 = rs.sync_run(td, CFG)
+            self.assertEqual(s1["oos_use_count"], 1)
+            self.assertEqual(s1["event"], "baseline_initialized")
+            s2 = rs.sync_run(td, CFG)
+            self.assertEqual(s2["oos_use_count"], 1)
+            self.assertEqual(s2["event"], "unchanged")
+            changed = CFG.with_overrides(**{"strategy.top_n": 12})
+            s3 = rs.sync_run(td, changed)
+            self.assertEqual(s3["oos_use_count"], 2)
+            self.assertEqual(s3["event"], "strategy_params_changed")
+            st = rs.load_state(Path(td) / "state" / "research_state.json")
+            self.assertEqual(len(st["history"]), 1)
+            blocked = rs.register(td, CFG, "新假设")
+            self.assertFalse(blocked["ok"])
+            forced = rs.register(td, CFG, "新假设", force=True)
+            self.assertTrue(forced["ok"])
+            s4 = rs.sync_run(td, changed)
+            self.assertEqual(s4["oos_use_count"], 3)
+            degraded = rs.sync_run(td, CFG.with_overrides(**{"strategy.top_n": 5}))
+            self.assertTrue(degraded["degraded"])
+
+
+class TestConfigWiring(unittest.TestCase):
+    """配置项接线：非法值报错、开关真生效、缺口显式登记。"""
+
+    def test_winsor_and_standardize_specs(self):
+        from quantlab.factors import apply_standardize, apply_winsor
+        md = synth(120)
+        raw = raw_factors(md, CFG)["mom_60"]
+        self.assertTrue(apply_winsor(raw, "none").equals(raw))
+        self.assertFalse(apply_winsor(raw, "mad3").fillna(0).equals(raw.fillna(0)))
+        with self.assertRaises(ValueError):
+            apply_winsor(raw, "bogus")
+        a = apply_standardize(raw, "rank_zscore", 5)
+        b = apply_standardize(raw, "zscore", 5)
+        self.assertFalse(a.fillna(0).equals(b.fillna(0)))
+        with self.assertRaises(ValueError):
+            apply_standardize(raw, "bogus", 5)
+
+    def test_market_proxy_rejects_unknown(self):
+        from quantlab.strategy import market_proxy
+        md = synth(80)
+        cfg = CFG.with_overrides(**{"strategy.market_timing.proxy": "csi_all_share"})
+        with self.assertRaises(ValueError):
+            market_proxy(md, cfg)
+
+    def test_min_avg_amount_bound(self):
+        md0 = synth(120)
+        cfg = CFG.with_overrides(**{"universe.min_avg_amount_20d": 1e12})
+        md1 = MarketData(md0.df, cfg)
+        self.assertTrue(md1.wiring["min_avg_amount_20d_applied"])
+        self.assertLess(int(md1.eligible.to_numpy().sum()), int(md0.eligible.to_numpy().sum()))
+
+    def test_industry_cap_applied_only_with_labels(self):
+        from quantlab.strategy import _cap_industry_weights
+        w = pd.Series({"a": 0.4, "b": 0.3, "c": 0.3})
+        unknown = pd.Series({"a": "UNKNOWN", "b": "UNKNOWN", "c": "UNKNOWN"})
+        out0, applied0 = _cap_industry_weights(w, unknown, 0.4)
+        self.assertFalse(applied0)
+        self.assertTrue(out0.equals(w))
+        known = pd.Series({"a": "银行", "b": "银行", "c": "白酒"})
+        out1, applied1 = _cap_industry_weights(w, known, 0.4)
+        self.assertTrue(applied1)
+        self.assertLessEqual(float(out1.loc[["a", "b"]].sum()), 0.4 + 1e-3)
+
+
+class TestRiskExtensions(unittest.TestCase):
+    """beta / 容量：null 显式 not_evaluated，给值即算。"""
+
+    def test_capacity_two_paths(self):
+        from quantlab.risk import beta_report, capacity_report
+        md = synth(200)
+        res = run_backtest(md, CFG)["result"]
+        self.assertEqual(capacity_report(res, md, CFG)["status"], "not_evaluated")
+        cfg = CFG.with_overrides(**{"step0.capital": 10_000_000})
+        cap = capacity_report(res, md, cfg)
+        self.assertEqual(cap["status"], "evaluated")
+        self.assertGreater(cap["capacity_upper_bound_cny"], 0)
+        self.assertTrue(np.isfinite(beta_report(res, md)["beta"]))
+
+
+class TestDualPriceBasis(unittest.TestCase):
+    """真实样本用未复权涨跌停基准；覆盖不足时回退且不阻断成交。"""
+
+    def test_synthetic_falls_back(self):
+        md = synth(60)
+        self.assertFalse(md.raw_prices_loaded)
+        self.assertIn("qfq_only", md.wiring["price_basis"])
+        self.assertTrue(bool(md.can_buy.to_numpy().any()), "回退后仍应存在可买标的")
+
+    def test_real_sample_uses_raw_limits(self):
+        path = ROOT / "data" / "sample_real" / "prices.csv"
+        if not (ROOT / "data" / "sample_real" / "prices_raw.csv").exists():
+            self.skipTest("未复权样本未下载")
+        md = MarketData(load_prices(path), CFG)
+        self.assertTrue(md.raw_prices_loaded)
+        self.assertTrue(md.wiring["price_basis"].startswith("raw_for_limits"))
+        code, cutoff = "600519", "2024-06-03"
+        date = [x for x in md.dates if x <= cutoff][-1]
+        raw_prev = float(md.prev_close_raw.loc[date, code])
+        qfq_prev = float(md.prev_close.loc[date, code])
+        self.assertAlmostEqual(float(md.limit_up.loc[date, code]), round(raw_prev * 1.10, 2), places=2)
+        self.assertNotAlmostEqual(raw_prev, qfq_prev, places=2,
+                                  msg="600519 有分红除权，前复权与未复权前收应不同")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

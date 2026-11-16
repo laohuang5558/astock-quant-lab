@@ -105,15 +105,57 @@ class MarketData:
         self.ret = self.close.pct_change(fill_method=None)
         self.prev_close = self.close.shift(1)
 
+        # ---- 双价格口径（followup #9）----
+        # 涨跌停基准必须用**未复权**前收：前复权序列会因未来除权而重算历史价，
+        # 用它乘 1±limit 会在除权日产生虚假的涨跌停信号。收益/盯市仍用前复权价。
+        self.raw_prices_loaded = False
+        self.price_basis = "qfq_only"
+        raw_path = cfg.get("data.raw_prices_csv") if cfg else None
+        if raw_path:
+            rp = Path(raw_path)
+            if not rp.is_absolute():
+                rp = Path(__file__).resolve().parent.parent / rp
+            if rp.exists():
+                rdf = pd.read_csv(rp, dtype={"code": str})
+                rdf["code"] = rdf["code"].astype(str).str.zfill(6)
+                rdf["date"] = pd.to_datetime(rdf["date"]).dt.strftime("%Y-%m-%d")
+                cand_open = rdf.pivot(index="date", columns="code", values="open").sort_index().reindex(
+                    index=self.dates, columns=self.codes)
+                cand_close = rdf.pivot(index="date", columns="code", values="close").sort_index().reindex(
+                    index=self.dates, columns=self.codes)
+                coverage = float(cand_open.notna().sum().sum()) / max(1, len(self.dates) * len(self.codes))
+                # 覆盖率不足（例如合成面板的日期不在真实样本区间内）时必须回退到
+                # 前复权口径，否则 can_buy/can_sell 会全为 False、所有成交被静默拒绝。
+                if coverage >= 0.5:
+                    self.open_raw = cand_open
+                    self.close_raw = cand_close
+                    self.prev_close_raw = self.close_raw.shift(1)
+                    self.raw_prices_loaded = True
+                    self.price_basis = "raw_for_limits__qfq_for_pnl"
+                    self.raw_coverage = round(coverage, 4)
+                else:
+                    self.price_basis = "qfq_only__raw_coverage_too_low"
+                    self.raw_coverage = round(coverage, 4)
+        base_prev = self.prev_close_raw if self.raw_prices_loaded else self.prev_close
+        base_open = self.open_raw if self.raw_prices_loaded else self.open
+
+        # ---- universe 配置项接线（followup #8）----
+        exclude_st = bool(cfg.get("universe.exclude_st", True)) if cfg else True
+        exclude_suspended = bool(cfg.get("universe.exclude_suspended", True)) if cfg else True
+        min_days = int(cfg.get("universe.min_listed_days", 120)) if cfg else 120
+        min_amt20 = float(cfg.get("universe.min_avg_amount_20d", 0) or 0) if cfg else 0.0
+
         lim = pd.Series({c: board_price_limit(c) for c in self.codes})
         self._lim = lim
-        up = self.prev_close.mul(1.0 + lim, axis=1).round(2)
-        dn = self.prev_close.mul(1.0 - lim, axis=1).round(2)
+        up = base_prev.mul(1.0 + lim, axis=1).round(2)
+        dn = base_prev.mul(1.0 - lim, axis=1).round(2)
         self.limit_up = up
         self.limit_down = dn
-        self.can_buy = self.open.notna() & (self.open < up - 1e-6)
-        self.can_sell = self.open.notna() & (self.open > dn + 1e-6)
-        self.tradable = self.close.notna() & self.volume.fillna(0).gt(0)
+        self.can_buy = base_open.notna() & (base_open < up - 1e-6)
+        self.can_sell = base_open.notna() & (base_open > dn + 1e-6)
+        self.tradable = self.close.notna()
+        if exclude_suspended:
+            self.tradable &= self.volume.fillna(0).gt(0)
 
         st = df.pivot(index="date", columns="code", values="is_st").sort_index().fillna(0)
         self.is_st = st.astype(bool)
@@ -131,16 +173,33 @@ class MarketData:
             index=self.dates, columns=self.codes,
         )
         self.age_days = age.apply(lambda s: s.dt.days)
-        min_days = int(cfg.get("universe.min_listed_days", 120)) if cfg else 120
+        amt20 = self.amount.rolling(20, min_periods=10).mean()
+        if min_amt20 > 0:
+            amt_ok = amt20.ge(min_amt20)
+        else:
+            amt_ok = pd.DataFrame(True, index=self.close.index, columns=self.close.columns)
+        st_ok = ~self.is_st if exclude_st else pd.DataFrame(True, index=self.close.index,
+                                                            columns=self.close.columns)
         self.eligible = (
             self.tradable
-            & ~self.is_st
+            & st_ok
+            & amt_ok
             & (self.age_days >= min_days)
             & self.prev_close.notna()
         )
         self.industry = (
             df.pivot(index="date", columns="code", values="industry").sort_index().fillna("UNKNOWN")
         )
+        self.wiring = {
+            "exclude_st": exclude_st,
+            "exclude_suspended": exclude_suspended,
+            "min_listed_days": min_days,
+            "min_avg_amount_20d": min_amt20,
+            "min_avg_amount_20d_applied": bool(min_amt20 > 0),
+            "raw_prices_loaded": self.raw_prices_loaded,
+            "price_basis": self.price_basis,
+            "raw_coverage": getattr(self, "raw_coverage", None),
+        }
         self.amount_proxy_note = "amount 为成交额近似值（见 config.data.amount_proxy）"
 
     def slice(self, start: str | None = None, end: str | None = None) -> "MarketData":

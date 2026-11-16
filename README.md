@@ -13,19 +13,29 @@
 pip install -r requirements.txt          # pandas / numpy，仅此两项
 
 python -m quantlab fetch                 # 抓取 20 只真实 A 股前复权日线 (2018-01-01 ~ 2026-11-13)
-python -m quantlab selftest              # 11 项单元测试（含真实数据跨源校验）
-python -m quantlab run                   # 完整研究：因子/回测/过拟合四件套/风控/质量门
-python -m quantlab run --quick           # 联调快速模式（跳过敏感性与蒙特卡洛）
+python -m quantlab fetch --adjust none --out data/sample_real/prices_raw.csv  # 未复权价（涨跌停基准）
+python -m quantlab selftest              # 25 项单元测试（含等价对照、预注册、双价格、真实数据跨源校验）
+python -m quantlab run                   # 完整研究：因子/回测/四件套(含 200 次等价重跑)/风控/质量门
+python -m quantlab run --quick           # 联调快速模式（跳过敏感性、蒙特卡洛与成本敏感性）
+python -m quantlab preregister --text "事前假设全文"   # 写入并冻结预注册假设
+python -m quantlab state                # 查看策略指纹与样本外使用次数
+python -m quantlab verify --render       # 交付前一致性校验（数值指纹 / 标记 / 陈旧值）
 ```
 
 产物写到 `output/`：
 
 | 文件 | 内容 |
 |---|---|
-| `result.json` | 全量结构化结果（Step 1–4 + 质量门），可机读 |
+| `result.json` | 全量结构化结果（Step 1–4 + 质量门 + 审计段），可机读 |
 | `SUMMARY.md` | 《量化策略研究报告》摘要版 |
-| `equity.csv` | 逐日净值 |
-| `trades.csv` | 逐笔成交（含被涨跌停/停牌阻断的订单） |
+| `equity.csv` / `trades.csv` | 逐日净值 / 逐笔成交（含被涨跌停、停牌、T+1 阻断的订单） |
+| `verify.json` | 一致性校验结果（指纹、漂移清单） |
+| `result_v1_pre_audit.json` / `result_v2_post_audit.json` | 审核前 / 审核整改后的固定基线存档 |
+
+报告重建与 CI：`scripts/build_design_report.py`、`scripts/build_audit_report.py`、
+`scripts/check_inline_js.py`；`.github/workflows/ci.yml` 会在每次推送自动跑
+`selftest → run → 报告重建 → node --check → verify`。
+关键数值由 `docs/metrics.md` 自动渲染，禁止手工转录。
 
 自定义配置：`python -m quantlab run --config config/my.json --data data/my.csv --out output/run2/`
 
@@ -96,8 +106,11 @@ quantlab/report.py              汇总 + reality-check 质量门（唯一放行�
 - **主数据源**：腾讯证券公开前复权日线 `web.ifzq.gtimg.cn`（L3 第三方，非交易所一手）。原始 CSV 42,093 行，面板化清洗后入模 **42,091 根 bar** / 20 只 / 2018-01-02～2026-11-13。数字以 `output/result.json` 的 `meta.sample.bars` 为准。
 - **交叉校验**：通达信 MCP `tdx_kline` 的 600519 在 **2026-11-13** 的 OHLC 为 `1404.00 / 1437.69 / 1394.00 / 1435.26`，与腾讯接口逐字段一致；该校验已固化为单元测试 `test_cross_source_ohlc_600519`。
 - **成交额**为近似值 `volume(手) × 100 × (H+L+C)/3`，不是交易所真实成交额；仅用于流动性类因子的横截面排序。
+- **双价格口径**：`prices.csv` 为前复权（收益与盯市），`prices_raw.csv` 为未复权（涨跌停基准）。前复权序列会因未来除权重算历史价，用它乘涨跌停比例会在除权日产生虚假信号，故 `can_buy/can_sell` 用未复权前收与开盘判定；覆盖率不足时自动回退并登记。**成交价仍用前复权价**，因为缺除权除息流水，该残余缺口登记在 `quality_gate`「双价格口径分离」项（判为存疑，不称已完全解决）。
 
-**已登记的数据缺口**（不得静默忽略）：行业分类缺失 → 行业中性化与行业权重上限本次不生效；历史 ST 标记、退市股与成分股历史变动缺失 → 存在幸存者偏差；PIT 财务缺失 → 价值/质量因子未启用。
+**已登记的数据缺口**（不得静默忽略）：行业分类缺失 → 行业中性化与行业权重上限本次不生效；历史 ST 标记、退市股与成分股历史变动缺失 → 存在幸存者偏差；PIT 财务缺失 → 价值/质量因子未启用；真实成交额与除权除息流水缺失 → 容量与成交价口径不可闭环。
+
+**开发闭环**：专家团审核后的 v3 改动（等价随机对照、预注册与样本外计数持久化、配置项接线、7 轴邻域共识、beta/容量定级、双价格、一致性 CI）见 `docs/DEVELOPMENT_v3.md`。
 
 ---
 
