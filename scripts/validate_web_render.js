@@ -70,10 +70,15 @@ async function runMode(mode) {
   }
   await new Promise(r => setTimeout(r, mode === 'online' ? 3000 : 400));
 
-  const panels = ['p-overview', 'p-equity', 'p-factors', 'p-overfit', 'p-gate', 'p-risk', 'p-tasks', 'p-delivery'];
+  const panels = ['p-overview', 'p-equity', 'p-factors', 'p-overfit', 'p-gate', 'p-risk', 'p-tasks', 'p-delivery', 'p-feikai'];
   const allHtml = panels.map(id => (els[id] ? els[id].innerHTML : '')).join('\n');
   if (runtimeErrors.length) console.log('  SYNC ERROR:', runtimeErrors.join(' | '));
-  check(`[${mode}] 8 个面板全部渲染出内容`, panels.every(id => els[id] && els[id].innerHTML.length > 200));
+  check(`[${mode}] 9 个面板全部渲染出内容`, panels.every(id => els[id] && els[id].innerHTML.length > 200));
+  const fk = (els['p-feikai'] || {}).innerHTML || '';
+  check(`[${mode}] 飞凯材料策略面板含真实读数`, fk.includes('飞凯材料') && fk.includes('不放行')
+        && fk.includes('等价随机对照') && fk.length > 400);
+  check(`[${mode}] 飞凯材料策略面板含逐笔交易与变体表`,
+        (fk.match(/<tr>/g) || []).length >= 7 && fk.includes('主规则'));
   check(`[${mode}] 无数据装载失败`, !allHtml.includes('数据装载失败') && !allHtml.includes('class="err"'));
   check(`[${mode}] 质量门不放行结论出现`, allHtml.includes('不放行'));
   check(`[${mode}] 总收益 52.04% 出现`, allHtml.includes('52.04%'));

@@ -1,0 +1,168 @@
+{
+  "ok": true,
+  "fingerprint": "4ddb45e03f4b14ae",
+  "checks": 36,
+  "passed": 36,
+  "failed": 0,
+  "issues": [],
+  "checks_detail": [
+    {
+      "name": "三份行情各有 2000+ 根",
+      "ok": true,
+      "detail": "qfq=2151 raw=2152 index=2152"
+    },
+    {
+      "name": "前复权不含盘中 bar",
+      "ok": true,
+      "detail": "qfq 末日=2026-11-16"
+    },
+    {
+      "name": "盘中 bar 已登记",
+      "ok": true
+    },
+    {
+      "name": "回测截到最后完整交易日",
+      "ok": true,
+      "detail": "2026-11-16"
+    },
+    {
+      "name": "标的名称跨源校验通过",
+      "ok": true
+    },
+    {
+      "name": "OHLC 无非正值",
+      "ok": true
+    },
+    {
+      "name": "OHLC 包含关系成立",
+      "ok": true
+    },
+    {
+      "name": "净值行数 = 样本天数",
+      "ok": true,
+      "detail": "2151"
+    },
+    {
+      "name": "净值首日 = 初始资金",
+      "ok": true,
+      "detail": "1000000.0"
+    },
+    {
+      "name": "净值末值 = 报告期末权益",
+      "ok": true
+    },
+    {
+      "name": "买入持有净值行数一致",
+      "ok": true
+    },
+    {
+      "name": "总收益 = 末值/初值-1",
+      "ok": true
+    },
+    {
+      "name": "逐笔净额合计 = 期末权益增益",
+      "ok": true,
+      "detail": "95754.13 vs 95754.13"
+    },
+    {
+      "name": "交易笔数与绩效一致",
+      "ok": true,
+      "detail": "7"
+    },
+    {
+      "name": "现金下限与敞口上限合规",
+      "ok": true
+    },
+    {
+      "name": "真实信号 override 逐日净值一致",
+      "ok": true,
+      "detail": "max_abs_diff=0.0"
+    },
+    {
+      "name": "真实信号 override 成本一致",
+      "ok": true
+    },
+    {
+      "name": "报告主规则绩效 = 重跑绩效",
+      "ok": true
+    },
+    {
+      "name": "本地报告指纹匹配",
+      "ok": true,
+      "detail": "4ddb45e03f4b14ae"
+    },
+    {
+      "name": "顶层报告指纹匹配",
+      "ok": true,
+      "detail": "4ddb45e03f4b14ae"
+    },
+    {
+      "name": "两份报告内容一致",
+      "ok": true
+    },
+    {
+      "name": "反向对照：破坏指纹后校验失效",
+      "ok": true
+    },
+    {
+      "name": "报告含主规则总收益",
+      "ok": true,
+      "detail": "9.58%"
+    },
+    {
+      "name": "报告含主规则夏普",
+      "ok": true,
+      "detail": "0.2862"
+    },
+    {
+      "name": "报告含样本外收益",
+      "ok": true,
+      "detail": "-3.66%"
+    },
+    {
+      "name": "报告含随机对照分位",
+      "ok": true
+    },
+    {
+      "name": "报告含全部 7 笔交易日期",
+      "ok": true
+    },
+    {
+      "name": "报告零内联 JS",
+      "ok": true
+    },
+    {
+      "name": "报告零外链资源",
+      "ok": true
+    },
+    {
+      "name": "变体数 >= 10",
+      "ok": true,
+      "detail": "14"
+    },
+    {
+      "name": "成本档位 4 档",
+      "ok": true
+    },
+    {
+      "name": "随机对照 200 次",
+      "ok": true
+    },
+    {
+      "name": "等价性审计为真",
+      "ok": true
+    },
+    {
+      "name": "账目闭合审计为真",
+      "ok": true
+    },
+    {
+      "name": "裁决由读数推导且不放行",
+      "ok": true
+    },
+    {
+      "name": "合规声明齐备",
+      "ok": true
+    }
+  ]
+}

@@ -11,7 +11,7 @@
 
 **想要一个能打开操作的系统？** 见 [docs/RUNNING.md](docs/RUNNING.md)：执行
 `python scripts/build_web_snapshot.py && python apps/api/server.py`，
-浏览器打开 `http://127.0.0.1:8000/` 即为 8 面板可交互控制台；
+浏览器打开 `http://127.0.0.1:8000/` 即为 9 面板可交互控制台（第 9 个为飞凯材料策略研究）；
 内网静态版在 `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/`（零依赖，离线只读）。
 
 ```bash
@@ -43,6 +43,21 @@ python -m quantlab verify --render       # 交付前一致性校验（数值指�
 `.github/workflows/ci.yml` 会在每次推送自动跑
 `selftest → run → 报告重建 → node --check → verify → 快照重建 → 接口冒烟 → 前端渲染校验`。
 关键数值由 `docs/metrics.md` 自动渲染，禁止手工转录。
+
+### 单标的策略研究（飞凯材料 300398 · KDJ 择时）
+
+独立于多因子主策略的研究子项目，见 [独立研报](../astock-quant-feikai-kdj-report.html) 与
+`research/feikai_kdj/output/RESEARCH_SUMMARY.md`（产物均在 `research/feikai_kdj/output/`）：
+
+```bash
+python research/feikai_kdj/fetch_data.py      # 300398 前复权/未复权 + 上证指数真实日线
+python research/feikai_kdj/run.py             # 规则形式化、14 个变体、样本内外、200 次等价随机对照
+python research/feikai_kdj/build_report.py    # 零 CDN 纯 SVG 研报 + 摘要
+python research/feikai_kdj/validate_research.py   # 36 项确定性校验（含反向对照）
+```
+
+规则把「上证新低买、反弹做 T、J 值为负、2 负反弹」形式化为可证伪条件；「2负」歧义用变体网格覆盖，不猜单一解释。
+数据、结果、报告、校验脚本均入库，可离线复跑。研究结论为「不放行」，全部读数仅为历史统计，不构成投资建议。
 
 自定义配置：`python -m quantlab run --config config/my.json --data data/my.csv --out output/run2/`
 

@@ -36,6 +36,11 @@ jobs:
           node --check apps/web/snapshot.js
       - name: Consistency gate (fingerprint + metric markers + stale values)
         run: python -m quantlab verify --render
+      - name: Single-stock strategy research (feikai KDJ) rebuild + validation
+        run: |
+          python research/feikai_kdj/run.py
+          python research/feikai_kdj/build_report.py
+          python research/feikai_kdj/validate_research.py
       - name: Build web snapshot from real artifacts
         run: python scripts/build_web_snapshot.py
       - name: Frontend render check (online + offline, Node DOM harness)
@@ -61,3 +66,5 @@ jobs:
             output/SUMMARY.md
             output/api_smoke.json
             output/web_render_check.json
+            research/feikai_kdj/output/result.json
+            research/feikai_kdj/output/validate_research.json

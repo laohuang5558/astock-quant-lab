@@ -1,0 +1,39 @@
+{
+  "fetched_at": "2026-11-17T12:42:18+08:00",
+  "source": "腾讯证券 web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+  "level": "L3 第三方公开行情，非交易所一手数据",
+  "symbols": {
+    "300398": "飞凯材料（创业板，涨跌幅 20%）",
+    "000001": "上证指数"
+  },
+  "name_check": {
+    "sz300398": "飞凯材料",
+    "sh000001": "上证指数"
+  },
+  "requested_range": [
+    "2018-01-01",
+    "2026-11-17"
+  ],
+  "rows": {
+    "feikai_qfq.csv": 2151,
+    "feikai_raw.csv": 2152,
+    "index_sh000001.csv": 2152
+  },
+  "last_complete_day": "2026-11-16",
+  "intraday_bars": [
+    "2026-11-17"
+  ],
+  "intraday_note": "未复权 / 指数通道在交易时段会返回当日未收盘 bar；该 bar 仅用于展示当前状态，回测样本一律截断到 last_complete_day，避免把盘中快照当成已实现收盘价。",
+  "price_basis": {
+    "pnl_and_signal": "feikai_qfq.csv 前复权",
+    "limit_up_down": "feikai_raw.csv 未复权前收 + 未复权开盘",
+    "timing": "index_sh000001.csv 上证指数收盘"
+  },
+  "caveats": [
+    "amount 为 volume×100×典型价近似，非交易所真实成交额，不得用于容量测算。",
+    "前复权价会随后续除权除息变化，历史回测中的绝对价格口径与实时行情不同。",
+    "成交价仍用前复权价，涨跌停基准用未复权价，属已登记的半步口径折损；彻底分离需除权除息流水。",
+    "未建模分红再投资、停牌复牌现金处理、冲击成本与整手取整。"
+  ],
+  "compliance": "research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。"
+}

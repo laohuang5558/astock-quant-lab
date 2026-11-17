@@ -1,0 +1,962 @@
+{
+  "meta": {
+    "title": "飞凯材料 KDJ 择时策略研究（research-only）",
+    "generated_at": "2026-11-17T12:47:17",
+    "data": {
+      "fetched_at": "2026-11-17T12:42:18+08:00",
+      "source": "腾讯证券 web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+      "level": "L3 第三方公开行情，非交易所一手数据",
+      "symbols": {
+        "300398": "飞凯材料（创业板，涨跌幅 20%）",
+        "000001": "上证指数"
+      },
+      "name_check": {
+        "sz300398": "飞凯材料",
+        "sh000001": "上证指数"
+      },
+      "requested_range": [
+        "2018-01-01",
+        "2026-11-17"
+      ],
+      "rows": {
+        "feikai_qfq.csv": 2151,
+        "feikai_raw.csv": 2152,
+        "index_sh000001.csv": 2152
+      },
+      "last_complete_day": "2026-11-16",
+      "intraday_bars": [
+        "2026-11-17"
+      ],
+      "intraday_note": "未复权 / 指数通道在交易时段会返回当日未收盘 bar；该 bar 仅用于展示当前状态，回测样本一律截断到 last_complete_day，避免把盘中快照当成已实现收盘价。",
+      "price_basis": {
+        "pnl_and_signal": "feikai_qfq.csv 前复权",
+        "limit_up_down": "feikai_raw.csv 未复权前收 + 未复权开盘",
+        "timing": "index_sh000001.csv 上证指数收盘"
+      },
+      "caveats": [
+        "amount 为 volume×100×典型价近似，非交易所真实成交额，不得用于容量测算。",
+        "前复权价会随后续除权除息变化，历史回测中的绝对价格口径与实时行情不同。",
+        "成交价仍用前复权价，涨跌停基准用未复权价，属已登记的半步口径折损；彻底分离需除权除息流水。",
+        "未建模分红再投资、停牌复牌现金处理、冲击成本与整手取整。"
+      ],
+      "compliance": "research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。"
+    },
+    "sample": {
+      "start": "2018-01-02",
+      "end": "2026-11-16",
+      "n_days": 2151
+    },
+    "kdj": {
+      "n": 9,
+      "m1": 3,
+      "m2": 3,
+      "initial": 50.0,
+      "rsv_when_zero_range": 0.0,
+      "warmup_days": 60
+    },
+    "symbol": {
+      "code": "300398",
+      "name": "飞凯材料",
+      "board": "创业板",
+      "limit_rule": "2020-08-24 前 10%，之后 20%（公开规则假设）"
+    },
+    "capital_note": "¥1,000,000 为研究假设规模，非用户实盘资金；step0.capital 仍为 null。",
+    "compliance": "research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。"
+  },
+  "rule_formalization": {
+    "user_words": "飞凯材料的策略 上证指数现在每次新低有反弹。新低买，反弹t 个股，看kdj，j值为负数，2负反弹",
+    "A_market": "上证指数收盘创 N 日新低（主规则 N=20）",
+    "B_stock": "飞凯材料 KDJ(9,3,3) 的 J 连续 M 日为负（主规则 M=2）且当日 J 较前日回升",
+    "entry": "A&B 同日 -> T 收盘出信号，T+1 开盘买入；涨停/停牌则放弃该次买入",
+    "exit": "J 上穿 0 / 止盈 +5% / 止损 -5% / 指数自入场低点反弹 1.5%（变体） / 持有上限 10 日；T 收盘判定，T+1 开盘卖出；跌停则顺延重试",
+    "t_plus_1_note": "A 股 T+1 不允许当日买入当日卖出，故「反弹做 T」被形式化为隔日波段，未建模日内回转（需底仓/融券，不在 research-only 范围）。",
+    "ambiguity": "「2负」可能是连续两日 J<0、J<-2、或二次探底；不猜单一解释，用变体网格覆盖并登记多重检验风险。",
+    "price_basis": {
+      "pnl_and_signal": "feikai_qfq.csv 前复权",
+      "limit_up_down": "feikai_raw.csv 未复权前收 + 未复权开盘",
+      "timing": "index_sh000001.csv 上证指数收盘"
+    }
+  },
+  "baseline": {
+    "strategy": {
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    "buy_and_hold": {
+      "total_return": 0.629654,
+      "annualized_return": 0.058883,
+      "sharpe": 0.373012,
+      "volatility_annual": 0.54992,
+      "max_drawdown": -0.746266,
+      "calmar": 0.078904,
+      "n_trades": 0,
+      "n_closed_trades": 0,
+      "win_rate": null,
+      "avg_hold_days": null,
+      "avg_trade_return_pct": null,
+      "cost_total_cny": 3690.94,
+      "cash_min_cny": 0.0,
+      "max_position_exposure": 1.0,
+      "final_equity_cny": 1629653.59
+    },
+    "buy_hold_liquidation_value_cny": 1678447.25,
+    "trades": [
+      {
+        "entry_date": "2018-08-07",
+        "exit_date": "2018-08-08",
+        "entry_price": 15.1376,
+        "exit_price": 15.6642,
+        "shares": 66044.31,
+        "hold_days": 1,
+        "gross_pnl_cny": 35796.02,
+        "cost_cny": 2560.25,
+        "net_pnl_cny": 33235.77,
+        "return_pct": 3.4788,
+        "exit_reason": "j_cross_zero",
+        "entry_j": 12.5212
+      },
+      {
+        "entry_date": "2018-11-28",
+        "exit_date": "2018-11-29",
+        "entry_price": 12.6703,
+        "exit_price": 13.0984,
+        "shares": 81527.27,
+        "hold_days": 1,
+        "gross_pnl_cny": 35953.52,
+        "cost_cny": 2643.53,
+        "net_pnl_cny": 33309.99,
+        "return_pct": 3.3789,
+        "exit_reason": "j_cross_zero",
+        "entry_j": 8.8201
+      },
+      {
+        "entry_date": "2021-02-01",
+        "exit_date": "2021-02-03",
+        "entry_price": 14.034,
+        "exit_price": 14.5997,
+        "shares": 75978.21,
+        "hold_days": 2,
+        "gross_pnl_cny": 44067.36,
+        "cost_cny": 2740.92,
+        "net_pnl_cny": 41326.44,
+        "return_pct": 4.0308,
+        "exit_reason": "j_cross_zero",
+        "entry_j": -6.4945
+      },
+      {
+        "entry_date": "2022-01-28",
+        "exit_date": "2022-02-10",
+        "entry_price": 23.3137,
+        "exit_price": 24.4598,
+        "shares": 47508.44,
+        "hold_days": 4,
+        "gross_pnl_cny": 55584.88,
+        "cost_cny": 2864.29,
+        "net_pnl_cny": 52720.59,
+        "return_pct": 4.9161,
+        "exit_reason": "j_cross_zero",
+        "entry_j": -12.5066
+      },
+      {
+        "entry_date": "2023-12-07",
+        "exit_date": "2023-12-08",
+        "entry_price": 16.5082,
+        "exit_price": 16.2019,
+        "shares": 70286.23,
+        "hold_days": 1,
+        "gross_pnl_cny": -20383.01,
+        "cost_cny": 2863.07,
+        "net_pnl_cny": -23246.08,
+        "return_pct": -1.8558,
+        "exit_reason": "j_cross_zero",
+        "entry_j": 0.086
+      },
+      {
+        "entry_date": "2024-03-28",
+        "exit_date": "2024-04-01",
+        "entry_price": 11.1356,
+        "exit_price": 11.6142,
+        "shares": 102110.89,
+        "hold_days": 2,
+        "gross_pnl_cny": 50034.34,
+        "cost_cny": 2928.2,
+        "net_pnl_cny": 47106.14,
+        "return_pct": 4.2982,
+        "exit_reason": "j_cross_zero",
+        "entry_j": -2.5952
+      },
+      {
+        "entry_date": "2026-10-13",
+        "exit_date": "2026-10-19",
+        "entry_price": 28.8144,
+        "exit_price": 26.6966,
+        "shares": 41096.01,
+        "hold_days": 4,
+        "gross_pnl_cny": -85890.66,
+        "cost_cny": 2808.07,
+        "net_pnl_cny": -88698.72,
+        "return_pct": -7.3496,
+        "exit_reason": "stop_loss",
+        "entry_j": -4.361
+      }
+    ],
+    "blocked": [],
+    "n_signals": 9
+  },
+  "audit": {
+    "control_equivalence": {
+      "equivalent": true,
+      "max_abs_equity_diff": 0.0,
+      "cost_abs_diff": 0.0,
+      "note": "以真实信号序列经 signals= 重跑，证明随机对照只替换了信号、未改变引擎/成本/退出规则。"
+    },
+    "trade_pnl_check": {
+      "trade_pnl_sum_cny": 95754.13,
+      "equity_gain_cny": 95754.13,
+      "abs_diff": 0.0,
+      "closed": true,
+      "note": "空仓期间无利息、无费用，逐笔净额合计必须严格等于期末权益减初始资金。"
+    }
+  },
+  "user_premise_check": {
+    "window": 20,
+    "horizons": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "scopes": {
+      "全样本 2018-2026": {
+        "1": {
+          "n": 218,
+          "up_ratio": 0.582569,
+          "mean": 0.00073,
+          "median": 0.001972,
+          "p25": -0.0055,
+          "p75": 0.008067,
+          "min": -0.077244,
+          "max": 0.034837
+        },
+        "3": {
+          "n": 218,
+          "up_ratio": 0.518349,
+          "mean": 0.001414,
+          "median": 0.000368,
+          "p25": -0.009489,
+          "p75": 0.014525,
+          "min": -0.07144,
+          "max": 0.061065
+        },
+        "5": {
+          "n": 218,
+          "up_ratio": 0.550459,
+          "mean": 0.003757,
+          "median": 0.002544,
+          "p25": -0.01355,
+          "p75": 0.019957,
+          "min": -0.0697,
+          "max": 0.081615
+        },
+        "10": {
+          "n": 218,
+          "up_ratio": 0.550459,
+          "mean": 0.007757,
+          "median": 0.003824,
+          "p25": -0.015292,
+          "p75": 0.022131,
+          "min": -0.081518,
+          "max": 0.290556
+        },
+        "n_newlow_days": 218
+      },
+      "近一年": {
+        "1": {
+          "n": 26,
+          "up_ratio": 0.730769,
+          "mean": 0.000511,
+          "median": 0.003753,
+          "p25": -0.001874,
+          "p75": 0.010402,
+          "min": -0.036333,
+          "max": 0.017832
+        },
+        "3": {
+          "n": 26,
+          "up_ratio": 0.461538,
+          "mean": -0.00033,
+          "median": -0.002778,
+          "p25": -0.009371,
+          "p75": 0.011146,
+          "min": -0.031266,
+          "max": 0.027332
+        },
+        "5": {
+          "n": 26,
+          "up_ratio": 0.384615,
+          "mean": -0.002799,
+          "median": -0.005376,
+          "p25": -0.014338,
+          "p75": 0.013777,
+          "min": -0.041638,
+          "max": 0.034635
+        },
+        "10": {
+          "n": 26,
+          "up_ratio": 0.423077,
+          "mean": -0.003156,
+          "median": -0.007413,
+          "p25": -0.021339,
+          "p75": 0.015737,
+          "min": -0.040366,
+          "max": 0.037105
+        },
+        "n_newlow_days": 26
+      }
+    },
+    "note": "统计的是历史条件频率，非未来预测；末 h 日无未来收益的样本已剔除。"
+  },
+  "current_state": {
+    "last_complete_day": "2026-11-16",
+    "stock_close_qfq": 27.72,
+    "kdj_j": 22.2504,
+    "kdj_k": 51.916,
+    "kdj_d": 66.7488,
+    "j_negative": false,
+    "j_prev_day": 59.9019,
+    "index_close": 3602.57,
+    "index_20d_newlow": false,
+    "rule_signal_today": false,
+    "last_signal_day": "2026-10-15",
+    "intraday_snapshot": {
+      "index": {
+        "date": "2026-11-17",
+        "open": 3585.67,
+        "high": 3602.07,
+        "low": 3565.59,
+        "close": 3602.07,
+        "note": "盘中未收盘快照，未进入回测"
+      },
+      "stock": {
+        "date": "2026-11-17",
+        "open": 27.51,
+        "high": 29.83,
+        "low": 27.4,
+        "close": 29.68,
+        "note": "盘中未收盘快照，未进入回测"
+      }
+    },
+    "note": "仅为历史/当日事实读数，用于说明规则当前是否触发，不构成任何买卖点或操作建议。"
+  },
+  "oos": {
+    "in_sample": {
+      "n_days": 1457,
+      "total_return": 0.137347,
+      "sharpe": 0.553141,
+      "max_drawdown": -0.038648,
+      "n_trades": 5,
+      "win_rate": 0.8,
+      "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+    },
+    "out_of_sample": {
+      "n_days": 694,
+      "total_return": -0.03657,
+      "sharpe": -0.350778,
+      "max_drawdown": -0.089991,
+      "n_trades": 2,
+      "win_rate": 0.5,
+      "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+    },
+    "buy_hold_in_sample": {
+      "n_days": 1457,
+      "total_return": -0.100843,
+      "sharpe": 0.215623,
+      "max_drawdown": -0.605963,
+      "n_trades": 0,
+      "win_rate": null,
+      "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+    },
+    "buy_hold_out_of_sample": {
+      "n_days": 694,
+      "total_return": 0.84186,
+      "sharpe": 0.660252,
+      "max_drawdown": -0.594142,
+      "n_trades": 0,
+      "win_rate": null,
+      "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+    },
+    "split": [
+      "2023-12-29",
+      "2024-01-02"
+    ],
+    "oos_use_count": 1
+  },
+  "variants": [
+    {
+      "name": "主规则：2负+20日新低+拐头",
+      "overrides": {},
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "「2负」解作单负",
+      "overrides": {
+        "j_neg_consecutive": 1
+      },
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "「2负」解作3连负",
+      "overrides": {
+        "j_neg_consecutive": 3
+      },
+      "perf": {
+        "total_return": 0.11815,
+        "annualized_return": 0.013169,
+        "sharpe": 0.349502,
+        "volatility_annual": 0.039662,
+        "max_drawdown": -0.089991,
+        "calmar": 0.146341,
+        "n_trades": 6,
+        "n_closed_trades": 6,
+        "win_rate": 0.833333,
+        "avg_hold_days": 2.33,
+        "avg_trade_return_pct": 2.1255,
+        "cost_total_cny": 16662.5,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1118150.1
+      },
+      "n_signals": 8,
+      "n_days": 2151,
+      "exposure_days": 14,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "「2负」解作 J<-5",
+      "overrides": {
+        "j_threshold": -5.0
+      },
+      "perf": {
+        "total_return": 0.11815,
+        "annualized_return": 0.013169,
+        "sharpe": 0.349502,
+        "volatility_annual": 0.039662,
+        "max_drawdown": -0.089991,
+        "calmar": 0.146341,
+        "n_trades": 6,
+        "n_closed_trades": 6,
+        "win_rate": 0.833333,
+        "avg_hold_days": 2.33,
+        "avg_trade_return_pct": 2.1255,
+        "cost_total_cny": 16662.5,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1118150.1
+      },
+      "n_signals": 8,
+      "n_days": 2151,
+      "exposure_days": 14,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "「2负」解作 J<-10",
+      "overrides": {
+        "j_threshold": -10.0
+      },
+      "perf": {
+        "total_return": 0.082183,
+        "annualized_return": 0.009296,
+        "sharpe": 0.266909,
+        "volatility_annual": 0.037236,
+        "max_drawdown": -0.089991,
+        "calmar": 0.103298,
+        "n_trades": 5,
+        "n_closed_trades": 5,
+        "win_rate": 0.8,
+        "avg_hold_days": 2.6,
+        "avg_trade_return_pct": 1.8549,
+        "cost_total_cny": 13648.63,
+        "cash_min_cny": -0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1082182.92
+      },
+      "n_signals": 6,
+      "n_days": 2151,
+      "exposure_days": 13,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "只看个股，不设大盘条件",
+      "overrides": {
+        "use_index_filter": false
+      },
+      "perf": {
+        "total_return": -0.096277,
+        "annualized_return": -0.01179,
+        "sharpe": -0.033516,
+        "volatility_annual": 0.126497,
+        "max_drawdown": -0.249045,
+        "calmar": -0.04734,
+        "n_trades": 39,
+        "n_closed_trades": 39,
+        "win_rate": 0.487179,
+        "avg_hold_days": 1.79,
+        "avg_trade_return_pct": 0.0715,
+        "cost_total_cny": 99993.73,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 903722.7
+      },
+      "n_signals": 62,
+      "n_days": 2151,
+      "exposure_days": 70,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "大盘新低窗口 10 日",
+      "overrides": {
+        "index_newlow_window": 10
+      },
+      "perf": {
+        "total_return": -0.033674,
+        "annualized_return": -0.004005,
+        "sharpe": -0.060197,
+        "volatility_annual": 0.047837,
+        "max_drawdown": -0.123555,
+        "calmar": -0.032415,
+        "n_trades": 11,
+        "n_closed_trades": 11,
+        "win_rate": 0.454545,
+        "avg_hold_days": 2.55,
+        "avg_trade_return_pct": -0.088,
+        "cost_total_cny": 28337.27,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 966325.85
+      },
+      "n_signals": 17,
+      "n_days": 2151,
+      "exposure_days": 28,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "大盘新低窗口 60 日",
+      "overrides": {
+        "index_newlow_window": 60
+      },
+      "perf": {
+        "total_return": 0.032741,
+        "annualized_return": 0.003781,
+        "sharpe": 0.130276,
+        "volatility_annual": 0.033117,
+        "max_drawdown": -0.052199,
+        "calmar": 0.072442,
+        "n_trades": 3,
+        "n_closed_trades": 3,
+        "win_rate": 0.666667,
+        "avg_hold_days": 2.33,
+        "avg_trade_return_pct": 1.3166,
+        "cost_total_cny": 7852.72,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1032741.05
+      },
+      "n_signals": 4,
+      "n_days": 2151,
+      "exposure_days": 7,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "大盘新低允许错位 3 日",
+      "overrides": {
+        "signal_window": 3
+      },
+      "perf": {
+        "total_return": 0.253604,
+        "annualized_return": 0.026833,
+        "sharpe": 0.309475,
+        "volatility_annual": 0.101177,
+        "max_drawdown": -0.237046,
+        "calmar": 0.113199,
+        "n_trades": 17,
+        "n_closed_trades": 17,
+        "win_rate": 0.705882,
+        "avg_hold_days": 1.59,
+        "avg_trade_return_pct": 1.7383,
+        "cost_total_cny": 51778.98,
+        "cash_min_cny": -0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1253604.44
+      },
+      "n_signals": 26,
+      "n_days": 2151,
+      "exposure_days": 27,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "不要求 J 拐头",
+      "overrides": {
+        "require_j_turn": false
+      },
+      "perf": {
+        "total_return": -0.031778,
+        "annualized_return": -0.003776,
+        "sharpe": -0.032083,
+        "volatility_annual": 0.060483,
+        "max_drawdown": -0.230699,
+        "calmar": -0.016369,
+        "n_trades": 14,
+        "n_closed_trades": 14,
+        "win_rate": 0.571429,
+        "avg_hold_days": 2.0,
+        "avg_trade_return_pct": 0.0049,
+        "cost_total_cny": 38756.8,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 968221.99
+      },
+      "n_signals": 21,
+      "n_days": 2151,
+      "exposure_days": 28,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "持有上限 5 日",
+      "overrides": {
+        "exit_max_hold": 5
+      },
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "持有上限 20 日",
+      "overrides": {
+        "exit_max_hold": 20
+      },
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "指数自低点反弹 1.5% 出场",
+      "overrides": {
+        "exit_index_rebound": 0.015
+      },
+      "perf": {
+        "total_return": 0.018292,
+        "annualized_return": 0.002126,
+        "sharpe": 0.081258,
+        "volatility_annual": 0.032704,
+        "max_drawdown": -0.089991,
+        "calmar": 0.023623,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.571429,
+        "avg_hold_days": 1.86,
+        "avg_trade_return_pct": 0.4972,
+        "cost_total_cny": 18656.63,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1018291.94
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 13,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "name": "仅按持有期出场（不做 J 上穿 0）",
+      "overrides": {
+        "exit_j_cross_zero": false,
+        "exit_take_profit": 9.9,
+        "exit_stop_loss": -9.9
+      },
+      "perf": {
+        "total_return": 0.044033,
+        "annualized_return": 0.005061,
+        "sharpe": 0.103017,
+        "volatility_annual": 0.079358,
+        "max_drawdown": -0.232515,
+        "calmar": 0.021767,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.571429,
+        "avg_hold_days": 10.0,
+        "avg_trade_return_pct": 0.9519,
+        "cost_total_cny": 19653.02,
+        "cash_min_cny": -0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1044032.68
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 70,
+      "blocked_orders": 0,
+      "open_position": null
+    }
+  ],
+  "variant_summary": {
+    "n_variants": 14,
+    "sharpe_min": -0.060197,
+    "sharpe_max": 0.349502,
+    "sharpe_spread": 0.409699,
+    "n_trades_min": 3,
+    "n_trades_max": 39,
+    "note": "单轴扰动；变体越多，挑选最优者的事后过拟合风险越高，未做独立验证段。"
+  },
+  "cost_sensitivity": [
+    {
+      "cost_mult": 1.0,
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "cost_mult": 1.5,
+      "perf": {
+        "total_return": 0.086201,
+        "annualized_return": 0.009734,
+        "sharpe": 0.260788,
+        "volatility_annual": 0.040211,
+        "max_drawdown": -0.090788,
+        "calmar": 0.107219,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.506,
+        "cost_total_cny": 28987.05,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1086200.96
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "cost_mult": 2.0,
+      "perf": {
+        "total_return": 0.076728,
+        "annualized_return": 0.008699,
+        "sharpe": 0.235242,
+        "volatility_annual": 0.040215,
+        "max_drawdown": -0.091584,
+        "calmar": 0.094978,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.4552,
+        "cost_total_cny": 38483.08,
+        "cash_min_cny": -0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1076728.25
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    },
+    {
+      "cost_mult": 3.0,
+      "perf": {
+        "total_return": 0.058022,
+        "annualized_return": 0.006629,
+        "sharpe": 0.183947,
+        "volatility_annual": 0.040278,
+        "max_drawdown": -0.093177,
+        "calmar": 0.07115,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.3538,
+        "cost_total_cny": 57229.71,
+        "cash_min_cny": -0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1058021.54
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null
+    }
+  ],
+  "random_control": {
+    "status": "evaluated",
+    "n_paths": 200,
+    "n_signals_per_path": 9,
+    "random_sharpe_mean": 0.023421,
+    "random_sharpe_p95": 0.556192,
+    "random_total_return_mean": 0.026193,
+    "baseline_sharpe": 0.286219,
+    "baseline_total_return": 0.095754,
+    "sharpe_percentile": 0.78,
+    "return_percentile": 0.67,
+    "significantly_better_than_random": false,
+    "note": "等价性来自同一 backtest() 与同一退出/成本规则；仅信号日随机化。"
+  },
+  "verdict": {
+    "final": "不放行",
+    "engineering": "可复跑、可审计",
+    "hard_fail_items": [
+      "样本量不足（平仓交易 < 30 笔）",
+      "未显著优于等价随机选时",
+      "多重检验风险（变体数 >= 10 且无独立验证段）"
+    ],
+    "hard_fail": {
+      "样本量不足（平仓交易 < 30 笔）": true,
+      "未显著优于等价随机选时": true,
+      "多重检验风险（变体数 >= 10 且无独立验证段）": true,
+      "成本 ×3 后收益归零": false,
+      "等价随机对照等价性不成立": false,
+      "逐笔净额与期末权益不闭合": false
+    },
+    "basis": "由真实读数推导：交易笔数、等价随机对照显著性、变体数与成本 ×3 结果",
+    "note": "工程侧可复跑不等同于策略结论成立；本结论仅针对历史样本内的统计检验。"
+  },
+  "caveats": [
+    "样本仅 1 只个股、7 笔平仓交易，统计功效极低，任何胜率/夏普都不可外推。",
+    "策略绝大部分时间空仓，低波动与低回撤主要来自「不持仓」，不是选股或择时能力的证明。",
+    "前复权价随后续除权除息变动，历史上看到的绝对价格与实时行情不同。",
+    "成交额为近似值，未用于容量测算；未建模分红再投资、停复牌现金处理、冲击成本、整手取整。",
+    "创业板涨跌幅按日期分段是公开规则假设，未逐日核对个股特殊状态（如风险警示、新股前 5 日）。",
+    "买入被涨跌停阻挡时直接放弃，卖出被阻挡时顺延；两条路径在真实与随机信号中一致，但属建模简化。",
+    "样本外仅切分一次，oos_use_count=1；参数网格已在同一段数据上反复试过，样本外不再干净。"
+  ],
+  "compliance": "research-only：不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作；历史统计不构成投资建议。"
+}

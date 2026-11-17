@@ -110,6 +110,7 @@
     <button class="tab" data-p="risk">风险定级</button>
     <button class="tab" data-p="tasks">任务与接口</button>
     <button class="tab" data-p="delivery">交付物</button>
+    <button class="tab" data-p="feikai">飞凯材料策略</button>
   </nav>
 
   <section class="panel active" id="p-overview"><div class="loading">加载真实读数…</div></section>
@@ -120,6 +121,7 @@
   <section class="panel" id="p-risk"></section>
   <section class="panel" id="p-tasks"></section>
   <section class="panel" id="p-delivery"></section>
+  <section class="panel" id="p-feikai"></section>
 
   <footer id="footer"></footer>
 </div>
@@ -224,7 +226,7 @@
       esc(rep.one_line_conclusion||"")+'<br><span style="font-size:12px">硬否决项：'+esc((q.hard_fail_items||[]).join("、"))+"</span></div>";
 
     renderOverview(); renderEquity(); renderFactors(); renderOverfit();
-    renderGate(); renderRisk(); renderTasks(); renderDelivery();
+    renderGate(); renderRisk(); renderTasks(); renderDelivery(); renderFeikai();
     $("footer").innerHTML="<b>合规声明</b><br>"+(rep.compliance||[]).map(esc).join("<br>")+
       "<br>颜色约定："+esc(rep.color_convention||"红涨绿跌")+"；本系统为 research-only，不含实盘下单、券商接口与自动交易循环。";
   }
@@ -463,6 +465,100 @@
       btn.disabled=false;
       log.textContent="提交失败："+e.message;
     });
+  }
+
+  // 单标的策略研究：数据随快照固化（同一份 result.json 派生），在线/离线两模式一致
+  function renderFeikai(){
+    var F = (S && S.feikai) || null;
+    if(!F){
+      $("p-feikai").innerHTML = card("飞凯材料策略研究","单标的策略研究快照未装载",
+        '<div class="err">缺少 feikai 研究快照，请运行 python scripts/build_web_snapshot.py</div>');
+      return;
+    }
+    var b=F.baseline||{}, bh=F.buy_hold||{}, v=F.verdict||{}, rc=F.random_control||{};
+    var cur=F.current||{}, oos=F.oos||{}, prem=F.premise||{}, rule=F.rule||{};
+    var o=oos.out_of_sample||{}, ins=oos.in_sample||{};
+    var k='<div class="grid">'+
+      kpi("研究标的","飞凯材料","300398 · 创业板","")+
+      kpi("信号 / 平仓",(F.n_signals||0)+" / "+(b.n_trades||0),"重叠信号被引擎忽略","")+
+      kpi("总收益",'<span class="'+cls(b.total_return)+'">'+pct(b.total_return)+"</span>","买入持有同期 "+pct(bh.total_return))+
+      kpi("夏普",num(b.sharpe),"年化波动 "+pct(b.volatility_annual))+
+      kpi("最大回撤",'<span class="'+cls(b.max_drawdown)+'">'+pct(b.max_drawdown)+"</span>","买入持有 "+pct(bh.max_drawdown))+
+      kpi("胜率",pct(b.win_rate,1),"平均持有 "+(b.avg_hold_days==null?"—":b.avg_hold_days)+" 日")+
+      kpi("样本外收益",'<span class="'+cls(o.total_return)+'">'+pct(o.total_return)+"</span>","样本内 "+pct(ins.total_return))+
+      kpi("等价随机对照分位",pct(rc.sharpe_percentile,1),(rc.n_paths||0)+" 次完整引擎重跑")+
+      "</div>";
+
+    var pr=[];
+    Object.keys(prem.scopes||{}).forEach(function(scope){
+      (prem.horizons||[]).forEach(function(h){
+        var x=(prem.scopes[scope]||{})[String(h)]||{};
+        pr.push([esc(scope),"+"+h+" 日",String(x.n==null?0:x.n),pct(x.up_ratio,1),pct(x.mean,2),pct(x.p75,2)]);
+      });
+    });
+    var premiseTable=table(["样本区间","持有期","样本数","上涨概率","均值","P75"],pr);
+
+    var tr=(F.trades||[]).map(function(t){
+      return [esc(t.entry_date),esc(t.exit_date),String(t.hold_days),
+        '<span class="'+cls(t.return_pct)+'">'+num(t.return_pct,2)+"%</span>",
+        num(t.net_pnl_cny,0),esc(t.exit_reason)];
+    });
+    var tradesTable=table(["买入日","卖出日","持有日","收益率","净额 ¥","出场原因"],tr);
+
+    var sorted=(F.variants||[]).slice().sort(function(x,y){return y.perf.sharpe-x.perf.sharpe;});
+    var vr=sorted.slice(0,8).map(function(x){
+      return [esc(x.name),num(x.perf.sharpe),'<span class="'+cls(x.perf.total_return)+'">'+pct(x.perf.total_return)+"</span>",
+              String(x.perf.n_trades)];
+    });
+    var variantTable=table(["规则变体","夏普","总收益","平仓交易"],vr);
+
+    var cr=(F.cost_sensitivity||[]).map(function(c){
+      return ["×"+c.cost_mult,'<span class="'+cls(c.perf.total_return)+'">'+pct(c.perf.total_return)+"</span>",
+              num(c.perf.sharpe),num(c.perf.cost_total_cny,0)];
+    });
+    var costTable=table(["成本档","总收益","夏普","累计成本 ¥"],cr);
+
+    var hf=(v.hard_fail_items||[]).map(function(x){return "<li>"+esc(x)+"</li>";}).join("");
+    var currentTable=table(["读数","数值"],[
+      ["最新完整交易日",esc(cur.last_complete_day)],
+      ["KDJ · J 值",num(cur.kdj_j,2)+(cur.j_negative?"（为负）":"（非负）")],
+      ["上证指数收盘",esc(cur.index_close)],
+      ["指数创 20 日新低",cur.index_20d_newlow?"是":"否"],
+      ["主规则当日触发",cur.rule_signal_today?"是":"否"],
+      ["最近一次历史信号",esc(cur.last_signal_day)],
+    ]);
+
+    $("p-feikai").innerHTML =
+      card("飞凯材料 KDJ 择时策略 · 规则形式化与裁决",
+           "research-only；单标的事件驱动回测，历史统计不构成投资建议",
+           '<div class="desc">用户原话：'+esc(rule.user_words||"")+"</div>"+
+           "<ul><li><b>大盘 A</b>："+esc(rule.A_market||"")+"</li>"+
+           "<li><b>个股 B</b>："+esc(rule.B_stock||"")+"</li>"+
+           "<li><b>入场</b>："+esc(rule.entry||"")+"</li>"+
+           "<li><b>出场（反弹 T）</b>："+esc(rule.exit||"")+"</li>"+
+           "<li><b>T+1 口径</b>："+esc(rule.t_plus_1_note||"")+"</li>"+
+           "<li><b>「2负」歧义</b>："+esc(rule.ambiguity||"")+"</li></ul>"+k)+
+      card("用户前提的客观检验：上证指数新低后是否反弹","创 20 日新低后的条件频率，非未来预测",
+           premiseTable+'<div class="desc">近一年新低次日反弹概率偏高，但 3/5/10 日上涨概率与均值回落；'
+           +esc(prem.note||"")+"</div>")+
+      card("逐笔交易与当前状态","共 "+(b.n_trades||0)+" 笔平仓；当前状态仅为事实读数",
+           tradesTable+currentTable+'<div class="desc">'+esc(cur.note||"")+"</div>")+
+      card("参数敏感性、成本与等价随机对照",
+           "「2负」歧义不做单一猜测，用 "+(F.variants||[]).length+" 个单轴变体覆盖",
+           variantTable+costTable+
+           table(["随机对照读数","数值"],[
+             ["重跑次数",String(rc.n_paths||0)],
+             ["随机夏普均值",num(rc.random_sharpe_mean)],
+             ["本策略夏普",num(rc.baseline_sharpe)],
+             ["夏普分位",pct(rc.sharpe_percentile,1)],
+             ["显著优于随机",rc.significantly_better_than_random?"是":"否"],
+             ["等价性断言",(F.audit&&F.audit.control_equivalence&&F.audit.control_equivalence.equivalent)?"通过":"失败"],
+           ])+'<div class="desc">'+esc(rc.note||"")+"</div>")+
+      card("裁决","由真实读数推导，不手写结论",
+           '<p><b>工程 '+esc(v.engineering||"")+" / 策略结论 "+esc(v.final||"")+"</b></p>"+
+           "<ul>"+hf+"</ul>"+
+           '<div class="desc">研究指纹 <code>'+esc(F.fingerprint)+'</code> · <a href="'+esc(F.report_url)+'">打开完整研报（含净值曲线与数据口径）</a></div>'+
+           '<div class="desc">'+esc(F.compliance||"")+"</div>");
   }
 
   function renderDelivery(){

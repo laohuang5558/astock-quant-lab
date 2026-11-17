@@ -72,6 +72,7 @@ def build_bundle() -> Path:
         extras = [
             (WORKSPACE / "astock-quant-design-report.html", "reports/astock-quant-design-report.html"),
             (WORKSPACE / "astock-quant-audit-report.html", "reports/astock-quant-audit-report.html"),
+            (WORKSPACE / "astock-quant-feikai-kdj-report.html", "reports/astock-quant-feikai-kdj-report.html"),
             (WORKSPACE / "astock-quant-designer.zip", "skill/astock-quant-designer.zip"),
         ]
         for src, arc in extras:
@@ -85,8 +86,24 @@ def load_context() -> dict:
     verify = json.loads((ROOT / "output" / "verify.json").read_text(encoding="utf-8"))
     contracts = json.loads((ROOT / "output" / "contracts_check.json").read_text(encoding="utf-8"))
     gate = result["quality_gate"]
+    fk_dir = ROOT / "research" / "feikai_kdj" / "output"
+    fk = json.loads((fk_dir / "result.json").read_text(encoding="utf-8"))
+    fkv = json.loads((fk_dir / "validate_research.json").read_text(encoding="utf-8"))
+    fk_fp = json.loads((fk_dir / "report_fingerprint.json").read_text(encoding="utf-8"))["fingerprint"]
     return {
         "fingerprint": verify["fingerprint"],
+        "fk_fingerprint": fk_fp,
+        "fk_ok": fkv["ok"],
+        "fk_validation": f"{fkv['passed']}/{fkv['checks']}",
+        "fk_verdict": fk["verdict"]["final"],
+        "fk_hard_fail": fk["verdict"]["hard_fail_items"],
+        "fk_total_return": fk["baseline"]["strategy"]["perf"]["total_return"],
+        "fk_sharpe": fk["baseline"]["strategy"]["perf"]["sharpe"],
+        "fk_n_trades": fk["baseline"]["strategy"]["perf"]["n_trades"],
+        "fk_oos": fk["oos"]["out_of_sample"]["total_return"],
+        "fk_percentile": fk["random_control"]["sharpe_percentile"],
+        "fk_premise_1d": fk["user_premise_check"]["scopes"]["近一年"]["1"]["up_ratio"],
+        "fk_premise_5d": fk["user_premise_check"]["scopes"]["近一年"]["5"]["up_ratio"],
         "verify_ok": verify["ok"],
         "contracts_ok": contracts["ok"],
         "api_paths": contracts["checks"]["path_count"],
@@ -163,6 +180,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <li><strong><a href="app/index.html">运行中的系统控制台（可交互，8 个面板）</a></strong> —— 静态离线版，零 CDN、零数据库；本机完整版见 <code>docs/RUNNING.md</code></li>
 <li><a href="astock-quant-design-report.html">可视化设计报告（ECharts，含指纹）</a></li>
 <li><a href="astock-quant-audit-report.html">专家团联合审核报告</a></li>
+<li><strong><a href="feikai-kdj-report.html">飞凯材料 KDJ 择时策略研报（单标的研究）</a></strong> —— 规则形式化、前提检验、7 笔交易、样本内外、随机对照与裁决</li>
 <li><a href="PLATFORM_ARCHITECTURE.md">平台化技术架构（前后端 / 数据库 / 智能体编排 / 接口契约 / 目录 / 里程碑）</a></li>
 <li><a href="openapi.yaml">接口契约 OpenAPI 3.1</a> · <a href="schema.sql">数据库 DDL</a> · <a href="ACCEPTANCE.md">验收清单文本版</a></li>
 <li><a href="astock-quant-lab-v3.tar.gz">完整工程交付包（tar.gz）</a> · <a href="astock-quant-designer.zip">WorkBuddy 技能包</a></li>
@@ -182,12 +200,30 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 
 <h2>五、系统运行状态</h2>
 <div class="card"><ul>
-<li><strong><a href="app/index.html">打开系统控制台</a></strong>：8 个可交互面板（总览 / 净值与回撤 / 因子检验 / 过拟合四件套 / 质量门 / 风险定级 / 任务与接口 / 交付物），数值指纹与 <code>result.json</code> 绑定。</li>
+<li><strong><a href="app/index.html">打开系统控制台</a></strong>：9 个可交互面板（总览 / 净值与回撤 / 因子检验 / 过拟合四件套 / 质量门 / 风险定级 / 任务与接口 / 交付物 / 飞凯材料策略），数值指纹与 <code>result.json</code> 绑定。</li>
 <li>本页为<strong>静态离线版</strong>：零 CDN、零数据库、零后端进程，浏览器直接运行；页面会显示「离线只读快照」标识，任务触发按钮禁用并说明原因。</li>
 <li><strong>本机完整版</strong>按 <a href="RUNNING.md">RUNNING.md</a> 启动 <code>python apps/api/server.py</code> 后访问 <code>http://127.0.0.1:8000/</code>，可真实触发单测、一致性校验、契约校验与完整回测；接口前缀 <code>/quant/api/v1</code> 与 <a href="openapi.yaml">OpenAPI 契约</a> 一致。</li>
-<li>校验证据：<a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（32 项）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验（16 项）</a>。</li>
+<li>校验证据：<a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（36 项 / 9 面板）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验（18 项 / 9 面板）</a> · <a href="feikai-kdj-validate.json">单标的策略研究校验（{ctx['fk_validation']}）</a>。</li>
 <li>实现栈取舍：目标栈 FastAPI + Vue 3；当前 MVP 用 Flask + 原生 JS 实现同一接口契约，接口与前端数据模型不变，替换实现栈不影响契约。内网服务器无可用的 Python 执行通道与数据库账号，故暂不接线 <a href="schema.sql">DDL</a>。</li>
 </ul></div>
+
+<h2>六、单标的策略研究（飞凯材料 300398）</h2>
+<div class="card">
+<p>用户提出的口语规则「上证指数新低买、反弹做 T、个股 KDJ 的 J 值为负、2 负反弹」已形式化为可证伪条件并完整回测。
+研究指纹 <code>{ctx['fk_fingerprint']}</code>；确定性校验 <strong>{ctx['fk_validation']}</strong>（含等价性断言、逐笔账目闭合、反向对照）。</p>
+<table>
+<tr><th>项</th><th>读数</th><th>说明</th></tr>
+<tr><td>研究裁决</td><td><span class="tag bad">{ctx['fk_verdict']}</span></td><td>硬否决：{'、'.join(ctx['fk_hard_fail'])}</td></tr>
+<tr><td>信号 / 平仓交易</td><td>{ctx['fk_n_trades']} 笔</td><td>样本量不足，统计功效极低</td></tr>
+<tr><td>总收益 / 夏普</td><td>{ctx['fk_total_return']*100:.2f}% / {ctx['fk_sharpe']:.4f}</td><td>策略多数时间空仓，低波动来自不持仓</td></tr>
+<tr><td>样本外（2024 起）总收益</td><td>{ctx['fk_oos']*100:.2f}%</td><td>样本内结论未延续</td></tr>
+<tr><td>等价随机对照分位</td><td>{ctx['fk_percentile']*100:.1f}%</td><td>未显著优于随机选时</td></tr>
+<tr><td>用户前提检验（近一年新低后）</td><td>次日上涨 {ctx['fk_premise_1d']*100:.1f}% / 5 日上涨 {ctx['fk_premise_5d']*100:.1f}%</td><td>反弹只发生在很短窗口，3 日以后转弱</td></tr>
+</table>
+<p style="margin-top:10px"><a href="feikai-kdj-report.html">打开完整研报</a> · <a href="feikai-kdj-summary.md">摘要文本版</a> · <a href="feikai-kdj-result.json">机器可读结果</a>。
+「2负」歧义未做单一猜测，用 14 个单轴变体覆盖并登记多重检验风险；控制台第 9 个面板可交互查看。</p>
+<p class="sub">该研究为历史统计，不构成投资建议；不荐股、不给买卖点与目标价、不承诺收益、不代操作。</p>
+</div>
 
 <div class="foot">合规：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。
 回测结果不等于实盘表现，历史业绩不代表未来。本页为静态验收页，勾选状态仅保存在当前浏览器页面内。</div>
@@ -218,6 +254,11 @@ def main() -> int:
         ("api_smoke.json", ROOT / "output" / "api_smoke.json"),
         ("web_render_check.json", ROOT / "output" / "web_render_check.json"),
         ("web_render_remote_check.json", ROOT / "output" / "web_render_remote_check.json"),
+        # 单标的策略研究（飞凯材料 KDJ 择时）
+        ("feikai-kdj-report.html", WORKSPACE / "astock-quant-feikai-kdj-report.html"),
+        ("feikai-kdj-result.json", ROOT / "research" / "feikai_kdj" / "output" / "result.json"),
+        ("feikai-kdj-summary.md", ROOT / "research" / "feikai_kdj" / "output" / "RESEARCH_SUMMARY.md"),
+        ("feikai-kdj-validate.json", ROOT / "research" / "feikai_kdj" / "output" / "validate_research.json"),
         # 可运行的静态系统（零依赖，Filer 子目录直接托管）
         ("app/index.html", ROOT / "apps" / "web" / "index.html"),
         ("app/snapshot.js", ROOT / "apps" / "web" / "snapshot.js"),
@@ -237,9 +278,11 @@ def main() -> int:
         f"接口契约 OpenAPI 3.1 可解析，{ctx['api_paths']} 条路径 / {ctx['api_operations']} 个操作 / {ctx['api_refs']} 处引用全部可解析",
         f"数据库 DDL：{ctx['ddl_tables']} 张表、pgvector(512)、现金/敞口 CHECK、HNSW 索引齐备",
         "交付物 sha256 与 MANIFEST.json 逐项一致，且每个 URL 已回读校验",
-        "可运行系统：app/index.html 控制台 8 个面板可打开，离线快照读数与 result.json 一致",
+        "可运行系统：app/index.html 控制台 9 个面板可打开，离线快照读数与 result.json 一致",
         "后端接口冒烟 41/41 通过（含真实执行 25 项单测、幂等键、冻结保护）",
-        "前端在线 + 离线双路径渲染校验通过（8 面板，关键读数与指纹一致）",
+        "前端在线 + 离线双路径渲染校验通过（9 面板 / 36 项，关键读数与指纹一致）",
+        "飞凯材料策略研究：确定性校验通过（等价性断言、逐笔账目闭合、指纹、反向对照）",
+        "飞凯材料研报与 result.json 绑定，结论不放行；研究不构成投资建议",
         "本机完整版启动命令见 RUNNING.md：python apps/api/server.py，端口 8000",
         "合规：research-only，无实盘下单与荐股内容",
     ]
