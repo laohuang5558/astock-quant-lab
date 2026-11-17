@@ -72,6 +72,23 @@ output/web_render_check.json      渲染校验机读结果
 
 实现栈取舍：架构文档的目标栈是 FastAPI + Vue 3 + Vite。本机环境当前只有 Flask、没有 Node 构建链与 PostgreSQL 账号，因此 MVP 用 Flask + 原生 JS 实现**同一份接口契约**，保证现在就能跑通；M2 阶段替换实现栈时接口、目录职责与前端数据模型不变。数据库 `db/schema.sql` 已建模，但本版本不接线（无账号），所有读数走本地真实产物，不使用占位数据。
 
+### 单标的研究复跑（v1 / v2）
+
+```bash
+cd astock-quant-lab
+python research/feikai_kdj/fetch_data.py
+python research/feikai_kdj/run.py && python research/feikai_kdj/build_report.py && python research/feikai_kdj/validate_research.py
+python research/feikai_kdj/run_v2.py && python research/feikai_kdj/build_report_v2.py && python research/feikai_kdj/validate_v2.py
+python scripts/build_web_snapshot.py     # 研究读数变更后必须重建前端快照
+node scripts/validate_web_render.js      # 校验在线/离线双路径渲染
+```
+
+v1 形式化「上证新低买 + 反弹 T + KDJ J 负 + 2 负反弹」；v2 补齐对话里的
+月线死叉 / 回踩 10 周线 / 震荡区间，并复用 v1 的回测引擎与成本模型（仅注入信号）。
+周线与月线条件按「已完成周期 + 当日」映射，无前视由历史截点截断重算反证；
+盘中未收盘 bar 一律排除。两份研究结论均为「工程可复跑 / 策略结论不放行」，
+前端第 9 个面板展示两代读数；研究产物变更后必须重建快照，否则页面读数会陈旧。
+
 ## 六、合规
 
 research-only（仅研究）；不含实盘下单、券商接口、自动交易循环。质量门结论不因平台化或运行形态改变：工程可交付、策略级结论不放行。不荐股、不给买卖点与目标价、不承诺收益、不代操作。

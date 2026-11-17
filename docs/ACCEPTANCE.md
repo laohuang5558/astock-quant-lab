@@ -1,7 +1,7 @@
 # 工程交付验收清单
 
 - 交付目标：内网 ai-server `192.168.2.203`，Filer `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/`
-- 交付时间：2026-11-17 13:23:33
+- 交付时间：2026-11-17 13:26:05
 - 数值指纹：`e819989972c994d1`
 - 质量门：工程 可交付 / 策略结论 不放行 / 最终 不放行
 - 验收入口：http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html
@@ -35,7 +35,7 @@
 
 | 文件 | 字节 | SHA-256 | 回读校验 |
 |---|---|---|---|
-| [`astock-quant-lab-v3.tar.gz`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz) | 2,675,984 | `9fa96a0402c687e2d69fe57eb53eb7daf214837ac71c057188e253eff548a7e7` | 通过 |
+| [`astock-quant-lab-v3.tar.gz`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz) | 2,676,444 | `42b8eacffdd355dd155f924a0e3f7a67d71853385149b825071255bd4f0379b5` | 通过 |
 | [`astock-quant-design-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-design-report.html) | 52,918 | `e0b4360bc1fc53c94f4db6febf741959e69db84cffe66bb1edb75d79eaf7b243` | 通过 |
 | [`astock-quant-audit-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-audit-report.html) | 29,589 | `ecc5be9a80c033bdc12c10e3a5f30a2d93af5660edb4ff797081d4f69abbd0b6` | 通过 |
 | [`astock-quant-designer.zip`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-designer.zip) | 27,131 | `7ccd76c4c0d14fb8fa24a0b0374eb35c79dfa5acab7aad00d52a7ba993f2b29f` | 通过 |
@@ -45,7 +45,7 @@
 | [`contracts_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/contracts_check.json) | 1,100 | `a1108e8230e7b1fc99bc5bb6df4037f5ddae2b7b703013979065f11c2d4a2f86` | 通过 |
 | [`verify.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/verify.json) | 354 | `755c2bb29b239faca9e1c7b6257d3af600fb63cef1264c19674d1341ef7fd09f` | 通过 |
 | [`README.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/README.md) | 11,125 | `e124f743e0692fbb9500262817d4fa7e281629edf7382d21365d69890b88af27` | 通过 |
-| [`RUNNING.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/RUNNING.md) | 5,163 | `6534d39cc12af385cf01346227c3c690587b7118c726ec200038f8ad3b4e4cd5` | 通过 |
+| [`RUNNING.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/RUNNING.md) | 6,251 | `bb06212d64f0ff485611245885055d0f9998530ba6ed0dd898da893a449ca93a` | 通过 |
 | [`api_smoke.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/api_smoke.json) | 2,299 | `ad1b97f0f61cff14c2c12382a7232eca9f5643ae0ca09ada454bc35961f4092f` | 通过 |
 | [`web_render_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/web_render_check.json) | 280 | `83885271f994add86bd7fd3ee7732163bfa7a6f9bf63a00f98e912dda782c6ac` | 通过 |
 | [`web_render_remote_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/web_render_remote_check.json) | 260 | `d4463fcc06167e52410f4cc5d23659bed6d0f7033abc9149ed4cdd4b1e0b95e1` | 通过 |
