@@ -96,6 +96,15 @@ def load_context() -> dict:
     fk2_fp = json.loads((fk_dir / "report_fingerprint_v2.json").read_text(encoding="utf-8"))["fingerprint"]
     health = json.loads((ROOT / "output" / "health_check.json").read_text(encoding="utf-8"))
     wb = json.loads((ROOT / "output" / "workbench_probe.json").read_text(encoding="utf-8"))
+    # :8094 改造评估的权威读数（只读既有 JSON，不硬编码）
+    t8094_probe = json.loads((ROOT / "output" / "terminal_8094_probe.json").read_text(encoding="utf-8"))
+    t8094_adapter = json.loads((ROOT / "output" / "terminal8094_adapter_check.json").read_text(encoding="utf-8"))
+    _t8094_layers = t8094_adapter.get("layers", {})
+    _t8094_l1 = _t8094_layers.get("L1") or _t8094_layers.get("l1") or {}
+    _t8094_l2 = _t8094_layers.get("L2") or _t8094_layers.get("l2") or {}
+    _t8094_nc = t8094_adapter.get("negative_controls", [])
+    _t8094_nc_good = sum(1 for n in _t8094_nc
+                         if n.get("expected_fail") is True and n.get("observed_fail") is True)
     full_stack_signals = next(v["signals"] for v in fk2["filter_variants"]
                               if v["name"].startswith("v2-9"))
     return {
@@ -154,6 +163,18 @@ def load_context() -> dict:
         "selftest": result["audit"]["selftest"]["tests_run"],
         "api_smoke_passed": (ROOT / "output" / "api_smoke.json").exists(),
         "web_render_passed": (ROOT / "output" / "web_render_check.json").exists(),
+        # :8094 改造评估：全部取自机读 JSON，未硬编码任何计数
+        "t8094_probe_ok": t8094_probe["ok"],
+        "t8094_probe_validation": f"{t8094_probe['passed']}/{t8094_probe['total']}",
+        "t8094_adapter_ok": t8094_adapter["ok"],
+        "t8094_adapter_validation": f"{t8094_adapter['passed']}/{t8094_adapter['total']}",
+        "t8094_skipped": t8094_adapter["skipped"],
+        "t8094_l1": f"{_t8094_l1['passed']}/{_t8094_l1['total']}",
+        "t8094_l1_status": _t8094_l1["status"],
+        "t8094_l2": f"{_t8094_l2['passed']}/{_t8094_l2['total']}",
+        "t8094_l2_status": _t8094_l2["status"],
+        "t8094_l2_mode": _t8094_l2["upstream_mode"],
+        "t8094_nc": f"{_t8094_nc_good}/{len(_t8094_nc)}",
     }
 
 
@@ -207,11 +228,12 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 
 <h2>三、核心验收入口</h2>
 <div class="card"><ul>
-<li><strong><a href="app/index.html">运行中的系统控制台（可交互，9 个面板）</a></strong> —— 静态离线版，零 CDN、零数据库；本机完整版见 <code>docs/RUNNING.md</code></li>
+<li><strong><a href="app/index.html">运行中的系统控制台（可交互，10 个面板）</a></strong> —— 静态离线版，零 CDN、零数据库；本机完整版见 <code>docs/RUNNING.md</code></li>
 <li><a href="astock-quant-design-report.html">可视化设计报告（ECharts，含指纹）</a></li>
 <li><a href="astock-quant-audit-report.html">专家团联合审核报告</a></li>
 <li><strong><a href="feikai-kdj-report.html">飞凯材料 KDJ 择时策略研报（单标的研究）</a></strong> —— 规则形式化、前提检验、7 笔交易、样本内外、随机对照与裁决</li>
 <li><strong><a href="feikai-kdj-v2-report.html">飞凯材料研究 v2（对话新增条件核对）</a></strong> —— 月线死叉 / 回踩 10 周线 / 震荡区间的形式化、逐条读数核对、无前视反证与条件叠加检验</li>
+<li><strong><a href="terminal8094-report.html">:8094 改造评估报告（只读规整层）</a></strong> —— 上游取证 {ctx['t8094_probe_validation']}、规整层 {ctx['t8094_adapter_validation']}（L1 {ctx['t8094_l1']} + L2 {ctx['t8094_l2_mode']} {ctx['t8094_l2']}）、反向对照 {ctx['t8094_nc']}、契约 6 path</li>
 <li><a href="PLATFORM_ARCHITECTURE.md">平台化技术架构（前后端 / 数据库 / 智能体编排 / 接口契约 / 目录 / 里程碑）</a></li>
 <li><a href="openapi.yaml">接口契约 OpenAPI 3.1</a> · <a href="schema.sql">数据库 DDL</a> · <a href="ACCEPTANCE.md">验收清单文本版</a></li>
 <li><a href="astock-quant-lab-v3.tar.gz">完整工程交付包（tar.gz）</a> · <a href="astock-quant-designer.zip">WorkBuddy 技能包</a></li>
@@ -231,11 +253,11 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 
 <h2>五、系统运行状态</h2>
 <div class="card"><ul>
-<li><strong><a href="app/index.html">打开系统控制台</a></strong>：9 个可交互面板（总览 / 净值与回撤 / 因子检验 / 过拟合四件套 / 质量门 / 风险定级 / 任务与接口 / 交付物 / 飞凯材料策略），数值指纹与 <code>result.json</code> 绑定。</li>
+<li><strong><a href="app/index.html">打开系统控制台</a></strong>：10 个可交互面板（总览 / 净值与回撤 / 因子检验 / 过拟合四件套 / 质量门 / 风险定级 / 任务与接口 / 交付物 / 飞凯材料策略 / :8094 改造评估），数值指纹与 <code>result.json</code> 绑定。</li>
 <li>本页为<strong>静态离线版</strong>：零 CDN、零数据库、零后端进程，浏览器直接运行；页面会显示「离线只读快照」标识，任务触发按钮禁用并说明原因。</li>
 <li><strong>本机完整版</strong>按 <a href="RUNNING.md">RUNNING.md</a> 启动 <code>python apps/api/server.py</code> 后访问 <code>http://127.0.0.1:8000/</code>，可真实触发单测、一致性校验、契约校验与完整回测；接口前缀 <code>/quant/api/v1</code> 与 <a href="openapi.yaml">OpenAPI 契约</a> 一致。</li>
 <li><strong>健康检查完整 URL</strong>：<code>{ctx['health_url']}</code>（HTTP {ctx['health_status']}，返回 JSON 含 <code>ok</code> / <code>data.status</code> / <code>metric_fingerprint</code>）。契约中 <code>/health</code> 需拼接 <code>servers[].url</code> 前缀；<code>/api/health</code> 实测 HTTP {ctx['health_negative']}，<strong>不是</strong>本服务健康端点，不得作为运行态判据。</li>
-<li>校验证据：<a href="health_check.json">健康端点确定性校验（{ctx['health_validation']}，含 2 条反向对照）</a> · <a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（9 面板）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验</a> · <a href="feikai-kdj-validate.json">单标的策略研究校验（{ctx['fk_validation']}）</a>。</li>
+<li>校验证据：<a href="health_check.json">健康端点确定性校验（{ctx['health_validation']}，含 2 条反向对照）</a> · <a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（10 面板）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验</a> · <a href="terminal_8094_probe.json">:8094 上游只读取证（{ctx['t8094_probe_validation']}）</a> · <a href="terminal8094_adapter_check.json">规整层双层验收（{ctx['t8094_adapter_validation']}，L1 {ctx['t8094_l1']} + L2 {ctx['t8094_l2']}，反向对照 {ctx['t8094_nc']}）</a> · <a href="feikai-kdj-validate.json">单标的策略研究校验（{ctx['fk_validation']}）</a>。</li>
 <li>实现栈取舍：目标栈 FastAPI + Vue 3；当前 MVP 用 Flask + 原生 JS 实现同一接口契约，接口与前端数据模型不变，替换实现栈不影响契约。本机无 SSH 免密凭据与直接数据库账号，故暂不接线 <a href="schema.sql">DDL</a>；内网另有经 <code>:8093</code> 工作台间接执行 shell/SQL 的通道，见下节；本平台对该服务的调用限定为只读 GET，任务创建与配置变更列入 M1/M2 的运维侧实施项。</li>
 </ul></div>
 
@@ -268,7 +290,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 </table>
 <p style="margin-top:10px"><a href="feikai-kdj-report.html">打开完整研报</a> · <a href="feikai-kdj-summary.md">摘要文本版</a> · <a href="feikai-kdj-result.json">机器可读结果</a>。
 「2负」歧义未做单一猜测，用 14 个单轴变体覆盖并登记多重检验风险；控制台第 9 个面板可交互查看。</p>
-<p class="sub">该研究为历史统计，不构成投资建议；不荐股、不给买卖点与目标价、不承诺收益、不代操作。</p>
+<p class="sub">该研究为历史统计，不构成投资建议；不荐股、不提供操作方向与价格判断、不承诺收益、不代操作。</p>
 </div>
 
 <h2>七、v2 · 对话新增条件核对（2026-11-17 12:28~12:31 对话）</h2>
@@ -291,7 +313,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <p class="sub">「是不是能 T」「我等 10 周线 T 一波」属操作判断，本研究只记录条件状态，不评价、不建议。全部为历史统计与事实读数，不构成投资建议。</p>
 </div>
 
-<div class="foot">合规：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。
+<div class="foot">合规：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不提供操作方向与价格判断、不承诺收益、不代操作。
 回测结果不等于实盘表现，历史业绩不代表未来。本页为静态验收页，勾选状态仅保存在当前浏览器页面内。</div>
 </body></html>"""
 
@@ -322,6 +344,15 @@ def main() -> int:
         ("api_smoke.json", ROOT / "output" / "api_smoke.json"),
         ("web_render_check.json", ROOT / "output" / "web_render_check.json"),
         ("web_render_remote_check.json", ROOT / "output" / "web_render_remote_check.json"),
+        # :8094 改造评估：验收报告页（第 10 面板硬编码此链接）+ 机读证据 + 子契约 + 文档
+        ("terminal8094-report.html", ROOT / "apps" / "web" / "terminal8094-report.html"),
+        ("terminal_8094_probe.json", ROOT / "output" / "terminal_8094_probe.json"),
+        ("terminal8094_adapter_check.json", ROOT / "output" / "terminal8094_adapter_check.json"),
+        ("terminal8094.openapi.yaml", ROOT / "contracts" / "terminal8094.openapi.yaml"),
+        ("TERMINAL_8094_REVIEW.md", ROOT / "docs" / "TERMINAL_8094_REVIEW.md"),
+        ("TERMINAL_8094_ARCH_FINAL.md", ROOT / "docs" / "TERMINAL_8094_ARCH_FINAL.md"),
+        ("TERMINAL_8094_DATA_SPEC.md", ROOT / "docs" / "TERMINAL_8094_DATA_SPEC.md"),
+        ("TERMINAL_8094_EVIDENCE.md", ROOT / "docs" / "TERMINAL_8094_EVIDENCE.md"),
         # 单标的策略研究（飞凯材料 KDJ 择时）
         ("feikai-kdj-report.html", WORKSPACE / "astock-quant-feikai-kdj-report.html"),
         ("feikai-kdj-result.json", ROOT / "research" / "feikai_kdj" / "output" / "result.json"),
@@ -351,11 +382,14 @@ def main() -> int:
         f"接口契约 OpenAPI 3.1 可解析，{ctx['api_paths']} 条路径 / {ctx['api_operations']} 个操作 / {ctx['api_refs']} 处引用全部可解析",
         f"数据库 DDL：{ctx['ddl_tables']} 张表、pgvector(512)、现金/敞口 CHECK、HNSW 索引齐备",
         "交付物 sha256 与 MANIFEST.json 逐项一致，且每个 URL 已回读校验",
-        "可运行系统：app/index.html 控制台 9 个面板可打开，离线快照读数与 result.json 一致",
+        "可运行系统：app/index.html 控制台 10 个面板可打开，离线快照读数与 result.json 一致",
         "后端接口冒烟 41/41 通过（含真实执行 25 项单测、幂等键、冻结保护）",
         f"健康端点确定性校验 {ctx['health_validation']} 通过：{ctx['health_url']} → HTTP {ctx['health_status']} + 响应 JSON 双证据；/api/health 反向对照 HTTP {ctx['health_negative']}",
         f"内网既有 Agent 工作台 {ctx['wb_base']} 只读探测 {ctx['wb_validation']} 通过（仅 GET、不触发 LLM 任务）；已登记其对架构硬约束的影响，建表与配置变更列入 M1/M2 运维侧实施项",
-        "前端在线 + 离线双路径渲染校验通过（9 面板 / 36 项，关键读数与指纹一致）",
+        "前端 10 面板双路径渲染校验通过（10 面板 / 58 项，关键读数与指纹一致）",
+        f":8094 改造：上游只读取证 {ctx['t8094_probe_validation']} PASS（反向对照 0/32 FAIL），规整层双层验收 {ctx['t8094_adapter_validation']}（L1 {ctx['t8094_l1']} + L2 {ctx['t8094_l2_mode']} {ctx['t8094_l2']}），负向对照 {ctx['t8094_nc']} 全部判 FAIL",
+        ":8094 规整层挂 :8000 既有 Blueprint，6 条只读 GET 路由，未新增进程/未改上游；契约 6 path YAML 可解析，错误体统一 error.code 无顶层别名，discarded_conds 双写",
+        "前端 10 面板双路径渲染校验 58/58 PASS（含抹掉 t8094 快照→降级的反向对照）",
         "飞凯材料策略研究：确定性校验通过（等价性断言、逐笔账目闭合、指纹、反向对照）",
         "飞凯材料研报与 result.json 绑定，结论不放行；研究不构成投资建议",
         f"飞凯材料 v2：月线死叉三口径 / 10 周线 / 震荡区间已形式化，{ctx['fk2_validation']} 项确定性校验通过（含无前视截断重算反证）",
@@ -430,7 +464,7 @@ def main() -> int:
         "python scripts/smoke_api.py",
         "node scripts/validate_web_render.js",
         "```", "",
-        "**合规**：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。", "",
+        "**合规**：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不提供操作方向与价格判断、不承诺收益、不代操作。", "",
     ])
     (DIST / "ACCEPTANCE.md").write_text(acceptance_md, encoding="utf-8")
     (ROOT / "docs" / "ACCEPTANCE.md").write_text(acceptance_md, encoding="utf-8")

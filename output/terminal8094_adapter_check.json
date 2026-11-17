@@ -1,0 +1,906 @@
+{
+  "ok": true,
+  "passed": 60,
+  "total": 60,
+  "failed": 0,
+  "skipped": 0,
+  "negative_controls_passed": 6,
+  "negative_controls_total": 6,
+  "layers": {
+    "l1": {
+      "status": "PASS",
+      "ok": true,
+      "passed": 47,
+      "total": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    "l2": {
+      "status": "PASS",
+      "ok": true,
+      "passed": 13,
+      "total": 13,
+      "failed": 0,
+      "skipped": 0,
+      "upstream_mode": "live",
+      "inprocess": "RAN",
+      "external": "RAN"
+    },
+    "L1": {
+      "status": "PASS",
+      "ok": true,
+      "passed": 47,
+      "total": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    "L2": {
+      "status": "PASS",
+      "ok": true,
+      "passed": 13,
+      "total": 13,
+      "failed": 0,
+      "skipped": 0,
+      "upstream_mode": "live",
+      "inprocess": "RAN",
+      "external": "RAN"
+    }
+  },
+  "checks": [
+    {
+      "name": "L1-00 模块导入与必需导出齐全（9 项）",
+      "ok": true,
+      "detail": "ok, exports=9",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-01 create_blueprint(envelope, fail, api_prefix[, error_codes]) 可挂载",
+      "ok": true,
+      "detail": "type=Blueprint factory_variant=error_codes-supported",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-02 build_payload_fingerprint 确定性（同一 obj 两次相等）",
+      "ok": true,
+      "detail": "f1='e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d' f2='e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d'",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "build_payload_fingerprint"
+    },
+    {
+      "name": "L1-03 build_payload_fingerprint 区分性（不同 obj 必须不等，证伪指纹恒量）",
+      "ok": true,
+      "detail": "f1='e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d' f3='56fcd81091f9c38ffe2bf63e7549466d1bed76c688aafb645636c260161e17c8' changed=True",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "build_payload_fingerprint"
+    },
+    {
+      "name": "L1-04 改 caveat 后 build_payload_fingerprint 必须不等（data-engineer 反证）",
+      "ok": true,
+      "detail": "base='e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d' caveat_changed='d89f237d91f620256436274d4437de927ab19b38eaa44dee295c8feabf2a1586' unequal=True",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "build_payload_fingerprint"
+    },
+    {
+      "name": "L1-05 build_payload_fingerprint 返回非空字符串",
+      "ok": true,
+      "detail": "type=str",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "build_payload_fingerprint"
+    },
+    {
+      "name": "L1-F2 无效 conds 显式失败 [1/0]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」) | variant=dict-envelope",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 无效 conds 显式失败 [__import__('os').getcwd()]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」) | variant=dict-envelope",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 无效 conds 显式失败 [cci_w]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」) | variant=dict-envelope",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 无效 conds 显式失败 [<空串>]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」) | variant=dict-envelope",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 无效 conds 显式失败 [close>0 or 1==1]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」) | variant=dict-envelope",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 扩展无效 conds 必须显式失败 [cci_w>99,cci_m>99]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」)",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 扩展无效 conds 必须显式失败 [cci_w>99 AND cci_m>99]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」)",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 扩展无效 conds 必须显式失败 [cci_w>>99]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」)",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 扩展无效 conds 必须显式失败 [unknown_field>1]",
+      "ok": true,
+      "detail": "ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_error_code_alias=True disclaimer=True(research_only=True + 「不构成投资建议」)",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F2 有效 conds 成功且 applied_conds 回显 [cci_w>99]",
+      "ok": true,
+      "detail": "ok_true=True applied_conds 回显=True",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-guard_conds 5 个反例全部 ok=False",
+      "ok": true,
+      "detail": "[{\"conds\": \"1/0\", \"ok_false\": true, \"err\": null}, {\"conds\": \"__import__('os').getcwd()\", \"ok_false\": true, \"err\": null}, {\"conds\": \"cci_w\", \"ok_false\": true, \"err\": null}, {\"conds\": \"adx>55,pdi<mdi\", \"ok_false\": true, \"err\": null}, {\"conds\": \"cci_w>99 and cci_m>99\", \"ok_false\": true, \"err\": null}]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "guard_conds"
+    },
+    {
+      "name": "L1-guard_conds 正例全部 applied 且 discarded 为空",
+      "ok": true,
+      "detail": "conds='adx>55;pdi<mdi;bias6<-3;cci14>=-140;cci14<-100' applied_all=True discarded_empty=True err=None",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "guard_conds"
+    },
+    {
+      "name": "L1-F4 stats_scope default/full 双 scope 均存在且各带 4 字段",
+      "ok": true,
+      "detail": "scopes=2 signature=2+kwargs",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "stats_scope"
+    },
+    {
+      "name": "L1-F4 caveat 四枚举命中 且 strategy_verdict 恒 not_approved",
+      "ok": true,
+      "detail": "verdicts=['not_approved', 'not_approved', 'not_approved'] caveat=['no_cost_model', 'no_oos', 'no_multiple_testing_correction', 'conditional_survival_sample'] caveat_hit=True",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "stats_scope"
+    },
+    {
+      "name": "L1-F4 两 scope 的 agg 读数不同（相同判 FAIL，防恒真）",
+      "ok": true,
+      "detail": "scope_numeric_sets=[[0.0089, 0.0815, 0.2132, 0.661, 0.707, 0.906, 53.0, 58.0, 59.0], [0.0017, 0.0188, 0.0551, 0.474, 0.518, 0.596, 508.0, 513.0, 514.0]] | 输入真实读数 default={\"fwd20\": {\"avg\": 0.0815, \"n\": 58, \"win\": 0.707}, \"fwd5\": {\"avg\": 0.0089, \"n\": 59, \"win\": 0.661}, \"fwd60\": {\"avg\": 0.2132, \"n\": 53, \"win\": 0.906}} full={\"fwd20\": {\"avg\": 0.0188, \"n\": 513, \"win\": 0.474}, \"fwd5\": {\"avg\": 0.0017, \"n\": 514, \"win\": 0.518}, \"fwd60\": {\"avg\": 0.0551, \"n\": 508, \"win\": 0.596}}",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "stats_scope"
+    },
+    {
+      "name": "L1-F4 stats_scope 输出确定性（两次调用逐字段差异 0）",
+      "ok": true,
+      "detail": "diffs=[]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "stats_scope"
+    },
+    {
+      "name": "L1-F5 fwd_formula == 'close[t+h]/open[t+1]-1'（stock/signals 口径披露）",
+      "ok": true,
+      "detail": "raw='close[t+h] / open[t+1] - 1' normalized='close[t+h]/open[t+1]-1' sources=['signals', 'stock'] err=None",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "data.fwd_formula"
+    },
+    {
+      "name": "L1-F5 stock/signals 含 price_basis 披露字段",
+      "ok": true,
+      "detail": "found=('signals.price_basis', 'T+1 open') | 归一候选=('price_basis', 'fwd_price_basis', 'basis') | sources=['signals', 'stock']",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "data.price_basis"
+    },
+    {
+      "name": "L1-F5 stock/signals 含 fwd_sample_n 披露字段",
+      "ok": true,
+      "detail": "found=('signals.fwd_sample_n', {'5': 413, '20': 412, '60': 407}) | 归一候选=('fwd_sample_n', 'fwd_n', 'daily_bars', 'sample_n') | sources=['signals', 'stock']",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "data.fwd_sample_n"
+    },
+    {
+      "name": "L1-F5 stock/signals 含 history_window 披露字段",
+      "ok": true,
+      "detail": "found=('signals.history_window', '2000 根（首根 2018-08-16）') | 归一候选=('history_window', 'daily_window', 'window', 'daily_window_truncated', 'daily_first') | sources=['signals', 'stock']",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "data.history_window"
+    },
+    {
+      "name": "L1-F5 stock/signals 含 universe_start_mismatch 披露字段",
+      "ok": true,
+      "detail": "found=('signals.universe_start_mismatch', True) | 归一候选=('universe_start_mismatch', 'window_inconsistent', 'universe_start') | sources=['signals', 'stock']",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "data.universe_start_mismatch"
+    },
+    {
+      "name": "L1-F5 真实读数证明可复算：T+1 开盘口径最大绝对误差 ≤ 1e-4",
+      "ok": true,
+      "detail": "verified_formula='fwd_h = close[t+h] / open[t+1] - 1' max_abs_err=4.996e-05 per_horizon={\"20\": {\"close_to_close_mean_abs_err\": 0.007093, \"n\": 412, \"t1_open_max_abs_err\": 4.996e-05, \"t1_open_mean_abs_err\": 2.505e-05}, \"5\": {\"close_to_close_mean_abs_err\": 0.007021, \"n\": 413, \"t1_open_max_abs_err\": 4.952e-05, ",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "evidence.fwd_recompute"
+    },
+    {
+      "name": "L1-F5 收盘到收盘口径误差显著更大（证明口径非它）",
+      "ok": true,
+      "detail": "close_to_close_mean_err=0.007021",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "evidence.fwd_recompute"
+    },
+    {
+      "name": "L1-F3 normalize_pick 默认剔除 null/ST/无名：输出 null=0 且 ST=0",
+      "ok": true,
+      "detail": "in=27 out=20 null=0 st=0 err=None",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "normalize_pick"
+    },
+    {
+      "name": "L1-F3 filtered_count > 0 且等于真实剔除数",
+      "ok": true,
+      "detail": "filtered_count=7 removed=7",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "normalize_pick.filtered_count"
+    },
+    {
+      "name": "L1-F3 filter_rules 为枚举子集",
+      "ok": true,
+      "detail": "filter_rules=['metric_null', 'st', 'unnamed']",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "normalize_pick.filter_rules"
+    },
+    {
+      "name": "L1-F3 伪零哨兵 sz000851（cci14=0.0/bias6=0.0）必须被排除",
+      "ok": true,
+      "detail": "fixture_has_sz000851=True removed=True | 只按 is None 过滤会漏掉伪零",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "normalize_pick"
+    },
+    {
+      "name": "L1-F3 normalize_pick(include_nulls=True) 不过滤（保留全部）",
+      "ok": true,
+      "detail": "kept=27 expected=27 err=None | 若函数不支持 include_nulls 则为契约能力缺失",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "normalize_pick.include_nulls"
+    },
+    {
+      "name": "L1-降级 UpstreamError → UPSTREAM_UNAVAILABLE/degraded/stale/disclaimer/非实时",
+      "ok": true,
+      "detail": "ok_false=True degraded=True code='UPSTREAM_UNAVAILABLE' stale=True disclaimer=True 非实时=True | upstream_error_class=UpstreamContractError",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "handle_pick(degraded)"
+    },
+    {
+      "name": "L1-降级 data is None / 无样例选股 / 半包次数 0",
+      "ok": true,
+      "detail": "data_type=NoneType code_hits=0 items=0",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "handle_pick(data)"
+    },
+    {
+      "name": "L1-边界 days=999999 → 4xx 类错误码 且 fake upstream 调用计数 == 0",
+      "ok": true,
+      "detail": "[{\"fn\": \"handle_signals\", \"error_code\": \"INVALID_ARGUMENT\", \"spy_calls\": 0, \"rejected\": true, \"no_upstream\": true, \"err\": null}]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "upstream.call_count"
+    },
+    {
+      "name": "L1-边界 days=0 → 4xx 类错误码 且 fake upstream 调用计数 == 0",
+      "ok": true,
+      "detail": "[{\"fn\": \"handle_signals\", \"error_code\": \"INVALID_ARGUMENT\", \"spy_calls\": 0, \"rejected\": true, \"no_upstream\": true, \"err\": null}]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "upstream.call_count"
+    },
+    {
+      "name": "L1-边界 limit=999999 → 4xx 类错误码 且 fake upstream 调用计数 == 0",
+      "ok": true,
+      "detail": "[{\"fn\": \"handle_pick\", \"error_code\": \"INVALID_ARGUMENT\", \"spy_calls\": 0, \"rejected\": true, \"no_upstream\": true, \"err\": null}]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "upstream.call_count"
+    },
+    {
+      "name": "L1-边界 非法 code → 4xx 类错误码 且 fake upstream 调用计数 == 0",
+      "ok": true,
+      "detail": "[{\"fn\": \"handle_signals\", \"error_code\": \"INVALID_ARGUMENT\", \"spy_calls\": 0, \"rejected\": true, \"no_upstream\": true, \"err\": null}]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "upstream.call_count"
+    },
+    {
+      "name": "L1-边界 非法 group → 4xx 类错误码 且 fake upstream 调用计数 == 0",
+      "ok": true,
+      "detail": "[{\"fn\": \"handle_scan\", \"error_code\": \"INVALID_ARGUMENT\", \"spy_calls\": 0, \"rejected\": true, \"no_upstream\": true, \"err\": null}]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "upstream.call_count"
+    },
+    {
+      "name": "L1-可复跑 同一 fixture 连跑 10 次 provenance.payload_fingerprint 全相等",
+      "ok": true,
+      "detail": "runs=10 distinct_fps=1 fp='b445058f96daf4f2e292ecd9aa74a3afd9ba4c76ffe6c7b4b7a41775c7f08a93' | 排除 {server_time,request_id}，metric_fingerprint 仅作继承自检、未用作相等判据",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "provenance.payload_fingerprint"
+    },
+    {
+      "name": "L1-可复跑 排除 {server_time,request_id} 后逐字段差异数 = 0",
+      "ok": true,
+      "detail": "diffs=[] excluded=[server_time, request_id]",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "envelope.fields"
+    },
+    {
+      "name": "L1-指纹陷阱规避 payload_fingerprint 不等于继承恒量",
+      "ok": true,
+      "detail": "payload_fp='b445058f96daf4f2e292ecd9aa74a3afd9ba4c76ffe6c7b4b7a41775c7f08a93' inherited='e819989972c994d1' build_sample='e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d' distinct=True",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "provenance.payload_fingerprint"
+    },
+    {
+      "name": "L1-继承能力自检 metric_fingerprint == 'e819989972c994d1'（零新增功能，仅验证复用）",
+      "ok": true,
+      "detail": "checked=18 values=['e819989972c994d1']",
+      "layer": "L1",
+      "status": "PASS",
+      "assert_object": "metric_fingerprint"
+    },
+    {
+      "name": "L1-F8 全量输出 disclaimer 完整率 100%（成功/错误/降级）",
+      "ok": true,
+      "detail": "total=18 passed=18 rate=100.0% misses=[]",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L1-F8 禁词「操盘/买卖点/目标价/收益承诺」全量字面计数 0",
+      "ok": true,
+      "detail": "banned_total=0 逐词分布={'操盘': 0, '买卖点': 0, '目标价': 0, '收益承诺': 0}（否定式列举同样计入）",
+      "layer": "L1",
+      "status": "PASS"
+    },
+    {
+      "name": "L2-00 自建 Flask app + create_blueprint + test_client 可用",
+      "ok": true,
+      "detail": "app=Flask factory_variant=error_codes-supported（不 import apps/api/server.py）",
+      "layer": "L2",
+      "status": "PASS"
+    },
+    {
+      "name": "L2-01 INVALID_CONDS → status 400 且 !=500；ok=false/error.code/data is None/无 sz000851/无顶层 error_code 别名",
+      "ok": true,
+      "detail": "status=400 not_500=True is_400=True ok_false=True code='INVALID_CONDS' data_is_None=True code_hits=0 no_sz000851=True no_error_code_alias=True",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "http.status + error.code"
+    },
+    {
+      "name": "L2-01b 在线 days=999999 → 4xx 且 !=500（反 500 静默通过）",
+      "ok": true,
+      "detail": "status=400 expect=400 not_500=True exact=True code='INVALID_ARGUMENT' data_none=True no_alias=True | upstream_calls=0（边界应在调用上游之前拦截）",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "http.status"
+    },
+    {
+      "name": "L2-08 days=999999 边界校验在调用上游之前（fake upstream 计数 == 0）",
+      "ok": true,
+      "detail": "upstream_calls=0",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "upstream.call_count"
+    },
+    {
+      "name": "L2-03 成功 /pick 信封 ok=true / request_id 非空 / server_time 非空 / metric_fingerprint == e819989972c994d1（仅继承能力自检）",
+      "ok": true,
+      "detail": "status=200 request_id='l2' server_time='l2' mf='e819989972c994d1'",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "metric_fingerprint"
+    },
+    {
+      "name": "L2-09 降级 → 502 且 !=500 / UPSTREAM_UNAVAILABLE / data is None / degraded=true / 无半包",
+      "ok": true,
+      "detail": "status=502 not_500=True code='UPSTREAM_UNAVAILABLE' degraded=True data=None",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "http.status + degraded"
+    },
+    {
+      "name": "L2-反500 显式门禁：所有错误响应 status != 500（把静默 500 变成可检测失败）",
+      "ok": true,
+      "detail": "error_statuses={'invalid_conds': 400, 'days_999999': 400, 'degrade': 502} all_not_500=True",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "http.status != 500"
+    },
+    {
+      "name": "L2-10 平台既有 /quant/api/v1/health → 200（继承能力自检）",
+      "ok": true,
+      "detail": "status=200 mf='e819989972c994d1'",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "metric_fingerprint"
+    },
+    {
+      "name": "L2-02 GET /terminal8094/meta → 200 + 信封最小集 + disclaimer.research_only",
+      "ok": true,
+      "detail": "status=200 min_set=True disclaimer=True(research_only=True + 「不构成投资建议」) | 未探测 /terminal8094/health",
+      "layer": "L2",
+      "status": "PASS",
+      "assert_object": "disclaimer.research_only"
+    },
+    {
+      "name": "L2-09 GET /terminal8094/meta → 200 + 信封最小集 + disclaimer.research_only",
+      "ok": true,
+      "detail": "status=200 min_set=True disclaimer=True(research_only=True + 「不构成投资建议」)",
+      "layer": "L2",
+      "status": "PASS"
+    },
+    {
+      "name": "L2-10 平台既有 /quant/api/v1/health → 200（继承能力自检）",
+      "ok": true,
+      "detail": "status=200 ok=True",
+      "layer": "L2",
+      "status": "PASS"
+    },
+    {
+      "name": "L2-11 在线 days=999999 → 4xx 且 != 500 且响应体 < 1MB",
+      "ok": true,
+      "detail": "any_4xx_and_not_500=True all_lt_1MB=True detail=[{'path': '/quant/api/v1/terminal8094/signals/sz300398?days=999999', 'status': 400, 'bytes': 1906}, {'path': '/quant/api/v1/terminal8094/stock/sz300398?days=999999', 'status': 400, 'bytes': 1906}, {'path': '/quant/api/v1/terminal8094/pick?days=999999', 'status': 400, 'bytes': 1906}]",
+      "layer": "L2",
+      "status": "PASS"
+    },
+    {
+      "name": "L2-live 上游 :8094 /api/meta 200 且 n_stocks > 0（只读 GET）",
+      "ok": true,
+      "detail": "status=200 n_stocks=5850 bytes=183",
+      "layer": "L2",
+      "status": "PASS"
+    }
+  ],
+  "negative_controls": [
+    {
+      "name": "NC1 L2 上游不可达（成对：可达→PASS / 未监听端口→L2 判 FAIL）",
+      "ok": true,
+      "detail": "dead_base=http://127.0.0.1:56529 state=FAILED failed=3/3 | 外部复现 --upstream-base <死端口> → 退出码 1",
+      "expected_fail": true,
+      "observed_fail": true
+    },
+    {
+      "name": "NC2 fixture 篡改/缺失（成对：合规→通过 / 篡改默认清单+fwd→判定 FAIL）",
+      "ok": true,
+      "detail": "NC2a judge_invalid_conds: clean=True tampered=False | NC2b 可复算: real_max=0.00004996(通过=True) tampered_max=0.05004996(判FAIL=True) | 结论：两类 L1 断言确实在检测",
+      "expected_fail": true,
+      "observed_fail": true
+    },
+    {
+      "name": "NC3 恒量做可复跑相等判据是恒真检查（成对：data 已变 / 指纹恒量仍相等）",
+      "ok": true,
+      "detail": "两份 data 差异数=3（真实不同），但 metric_fingerprint 恒量相等=True → 若拿恒量做可复跑断言会误判 PASS；故可复跑由 payload_fingerprint 承担",
+      "expected_fail": true,
+      "observed_fail": true
+    },
+    {
+      "name": "NC4-1 错误码未注册→status=500（其余字段全合规）",
+      "ok": true,
+      "detail": "注入缺陷后同一判定函数必须 FAIL | observed_fail=True | shadow=status=500 not_500=False is_400=False ok_false=True code='INVALID_CONDS' data_is_None=True | 真实链路 status=500 复判通过?=False",
+      "expected_fail": true,
+      "observed_fail": true
+    },
+    {
+      "name": "NC4-2 conds 非法却返回默认选股清单（sz000851）",
+      "ok": true,
+      "detail": "注入缺陷后同一判定函数必须 FAIL | observed_fail=True | ok_false=False code=None data_is_None=False code_hits=1 no_error_code_alias=True disclaimer=False(disclaimer 缺失)",
+      "expected_fail": true,
+      "observed_fail": true
+    },
+    {
+      "name": "NC4-3 payload_fingerprint 用 metric_fingerprint 恒量代替",
+      "ok": true,
+      "detail": "注入缺陷后同一判定函数必须 FAIL | observed_fail=True | deterministic=True discriminative=False not_inherited=False f1='e819989972c994d1' f3='e819989972c994d1'",
+      "expected_fail": true,
+      "observed_fail": true
+    }
+  ],
+  "evidence": {
+    "module_source": "F:\\workbuddy\\spaces\\2026_11_16_16-55-02\\astock-quant-lab\\apps\\api\\terminal8094.py",
+    "required_exports": [
+      "guard_conds",
+      "handle_pick",
+      "normalize_pick",
+      "stats_scope",
+      "build_payload_fingerprint",
+      "handle_scan",
+      "handle_signals",
+      "create_blueprint",
+      "client.fetch"
+    ],
+    "missing_exports": [],
+    "import_error": null,
+    "probe_evidence_error": null,
+    "interface_variant": {
+      "signatures": {
+        "guard_conds": "(raw: 'str') -> 'dict'",
+        "handle_pick": "(params, upstream=None)",
+        "normalize_pick": "(items: 'list', include_nulls: 'bool' = False, filter_mode: 'str | None' = None) -> 'dict'",
+        "stats_scope": "(default_agg: 'dict', full_agg: 'dict', *, default_limit: 'int' = 60, full_limit: 'int' = 600) -> 'dict'",
+        "build_payload_fingerprint": "(obj: 'dict') -> 'str'",
+        "handle_scan": "(params, upstream=None)",
+        "handle_signals": "(code, params, upstream=None)",
+        "create_blueprint": "(envelope, fail, api_prefix='/quant/api/v1/terminal8094', error_codes=None)"
+      },
+      "upstream_error_class": "UpstreamContractError",
+      "note": "形态归一仅作用于字段抽取位置与调用方式，不改变判定标准"
+    },
+    "blueprint_type": "Blueprint",
+    "error_codes_factory": "error_codes-supported",
+    "fingerprint_samples": {
+      "same_1": "e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d",
+      "same_2": "e727be16cd08d74df9dba71b92cd1bad8a73b0cb4080eb584afe139ea5286b0d",
+      "diff_obj": "56fcd81091f9c38ffe2bf63e7549466d1bed76c688aafb645636c260161e17c8",
+      "caveat_changed": "d89f237d91f620256436274d4437de927ab19b38eaa44dee295c8feabf2a1586"
+    },
+    "stats_scope_signature_variant": "2+kwargs",
+    "f4_scopes": {
+      "scope_count": 2,
+      "caveat": [
+        "no_cost_model",
+        "no_oos",
+        "no_multiple_testing_correction",
+        "conditional_survival_sample"
+      ],
+      "winrate_equality_asserted": false,
+      "note": "不对上游胜率数值做相等判定；仅校验结构/枚举/verdict/双口径差异/确定性。stats.total(5850) 与 signals.total(515) 同名异义，禁止互判；配对 n=413/412/407 与 agg.n 两套计数，禁止互校。"
+    },
+    "f5_disclosure": {
+      "formula_raw": "close[t+h] / open[t+1] - 1",
+      "found": {
+        "price_basis": [
+          "signals.price_basis",
+          "T+1 open"
+        ],
+        "fwd_sample_n": [
+          "signals.fwd_sample_n",
+          {
+            "5": 413,
+            "20": 412,
+            "60": 407
+          }
+        ],
+        "history_window": [
+          "signals.history_window",
+          "2000 根（首根 2018-08-16）"
+        ],
+        "universe_start_mismatch": [
+          "signals.universe_start_mismatch",
+          true
+        ]
+      },
+      "sources": {
+        "signals_data_keys": [
+          "applied_conds",
+          "caveat",
+          "caveat_text",
+          "code",
+          "daily_bars",
+          "daily_first",
+          "daily_window_truncated",
+          "dual_scope_calls",
+          "fwd_formula",
+          "fwd_return_disclosure",
+          "fwd_sample_n",
+          "history_window",
+          "note",
+          "price_basis",
+          "scopes",
+          "strategy_verdict",
+          "universe_start",
+          "universe_start_mismatch"
+        ],
+        "stock_data_keys": [
+          "applied_conds",
+          "code",
+          "daily_first",
+          "daily_window_truncated",
+          "fwd_formula",
+          "fwd_sample_n",
+          "history_window",
+          "price_basis",
+          "stock",
+          "truncated",
+          "universe_start",
+          "universe_start_mismatch"
+        ]
+      },
+      "handle_stock": "ok",
+      "daily_first": "2018-08-16",
+      "daily_len": 2000,
+      "universe_start": "2015-06-01",
+      "window_inconsistent": true,
+      "verified_formula": "fwd_h = close[t+h] / open[t+1] - 1",
+      "max_abs_err": 4.996e-05,
+      "note": "裁决 4-1：F5 可复算，改造动作为补披露，不标 UNVERIFIABLE、不改算法。lead 第 7 条为 stock/signals data，故两个来源任一提供即可。"
+    },
+    "f3_counts": {
+      "in": 27,
+      "out": 20,
+      "removed": 7,
+      "filtered_count": 7,
+      "null_after": 0,
+      "st_after": 0,
+      "filter_rules": [
+        "metric_null",
+        "st",
+        "unnamed"
+      ],
+      "sentinel_sz000851_present": true,
+      "sentinel_sz000851_removed": true,
+      "include_nulls_supported": true
+    },
+    "boundary": [
+      {
+        "case": "days=999999",
+        "ok": true,
+        "results": [
+          {
+            "fn": "handle_signals",
+            "error_code": "INVALID_ARGUMENT",
+            "spy_calls": 0,
+            "rejected": true,
+            "no_upstream": true,
+            "err": null
+          }
+        ]
+      },
+      {
+        "case": "days=0",
+        "ok": true,
+        "results": [
+          {
+            "fn": "handle_signals",
+            "error_code": "INVALID_ARGUMENT",
+            "spy_calls": 0,
+            "rejected": true,
+            "no_upstream": true,
+            "err": null
+          }
+        ]
+      },
+      {
+        "case": "limit=999999",
+        "ok": true,
+        "results": [
+          {
+            "fn": "handle_pick",
+            "error_code": "INVALID_ARGUMENT",
+            "spy_calls": 0,
+            "rejected": true,
+            "no_upstream": true,
+            "err": null
+          }
+        ]
+      },
+      {
+        "case": "非法 code",
+        "ok": true,
+        "results": [
+          {
+            "fn": "handle_signals",
+            "error_code": "INVALID_ARGUMENT",
+            "spy_calls": 0,
+            "rejected": true,
+            "no_upstream": true,
+            "err": null
+          }
+        ]
+      },
+      {
+        "case": "非法 group",
+        "ok": true,
+        "results": [
+          {
+            "fn": "handle_scan",
+            "error_code": "INVALID_ARGUMENT",
+            "spy_calls": 0,
+            "rejected": true,
+            "no_upstream": true,
+            "err": null
+          }
+        ]
+      }
+    ],
+    "repro": {
+      "runs": 10,
+      "distinct_payload_fingerprints": 1,
+      "payload_fp": "b445058f96daf4f2e292ecd9aa74a3afd9ba4c76ffe6c7b4b7a41775c7f08a93",
+      "inherited_fingerprint": "e819989972c994d1",
+      "excluded_keys": [
+        "server_time",
+        "request_id"
+      ],
+      "metric_fingerprint_used_as_repro_gate": false,
+      "inherited_values": [
+        "e819989972c994d1"
+      ],
+      "interface_variant": "dict-envelope"
+    },
+    "f8_disclaimer_coverage": {
+      "total": 18,
+      "passed": 18,
+      "rate": 100.0,
+      "banned_total": 0,
+      "banned_breakdown": {
+        "操盘": 0,
+        "买卖点": 0,
+        "目标价": 0,
+        "收益承诺": 0
+      },
+      "misses": [],
+      "policy": "字面计数 0；否定式列举不豁免"
+    },
+    "l2_inprocess": {
+      "upstream_mode": "fixture-replay",
+      "factory_variant": "error_codes-supported",
+      "statuses": {
+        "invalid_conds": 400,
+        "days_999999": 400,
+        "pick_ok": 200,
+        "degrade": 502
+      },
+      "fake_upstream_calls": {
+        "invalid_conds": 0,
+        "days_999999": 0,
+        "pick_ok": 1,
+        "degrade": 1
+      },
+      "forbidden_probe": "/quant/api/v1/terminal8094/health 未探测"
+    },
+    "l2_external": {
+      "base": "http://127.0.0.1:8000",
+      "state": "RAN",
+      "requests": [
+        {
+          "path": "/quant/api/v1/terminal8094/meta",
+          "status": 200,
+          "bytes": 2302
+        },
+        {
+          "path": "/quant/api/v1/health",
+          "status": 200,
+          "bytes": 509
+        },
+        {
+          "path": "/quant/api/v1/terminal8094/signals/sz300398?days=999999",
+          "status": 400,
+          "bytes": 1906
+        },
+        {
+          "path": "/quant/api/v1/terminal8094/stock/sz300398?days=999999",
+          "status": 400,
+          "bytes": 1906
+        },
+        {
+          "path": "/quant/api/v1/terminal8094/pick?days=999999",
+          "status": 400,
+          "bytes": 1906
+        }
+      ],
+      "forbidden_probe": "/quant/api/v1/terminal8094/health 未探测"
+    },
+    "l2_live": {
+      "reachable": true,
+      "status": 200,
+      "upstream_mode": "live",
+      "n_stocks": 5850
+    },
+    "nc1": {
+      "dead_base": "http://127.0.0.1:56529",
+      "state": "FAILED",
+      "failed": 3
+    },
+    "nc2": {
+      "clean_ok": true,
+      "tampered_ok": false,
+      "real_max": 4.996e-05,
+      "tampered_max": 0.050049960000000004
+    },
+    "nc3": {
+      "data_diff_count": 3,
+      "trivial_fingerprint_equal": true
+    },
+    "nc4_real_500_status": 500,
+    "nc4_defects": [
+      {
+        "defect": "错误码未注册→status=500（其余字段全合规）",
+        "observed_fail": true,
+        "detail": "shadow=status=500 not_500=False is_400=False ok_false=True code='INVALID_CONDS' data_is_None=True | 真实链路 status=500 复判通过?=False"
+      },
+      {
+        "defect": "conds 非法却返回默认选股清单（sz000851）",
+        "observed_fail": true,
+        "detail": "ok_false=False code=None data_is_None=False code_hits=1 no_error_code_alias=True disclaimer=False(disclaimer 缺失)"
+      },
+      {
+        "defect": "payload_fingerprint 用 metric_fingerprint 恒量代替",
+        "observed_fail": true,
+        "detail": "deterministic=True discriminative=False not_inherited=False f1='e819989972c994d1' f3='e819989972c994d1'"
+      }
+    ],
+    "negative_control_mode": {
+      "enabled": false,
+      "note": "三缺陷 shadow 自检默认每次都跑，不污染主 checks"
+    },
+    "self_test_negative": {
+      "enabled": false,
+      "injected_valid_conds": "cci_w>99",
+      "failed_checks_detected": null
+    },
+    "contract_gaps": [],
+    "note": "L1 断言输出 dict 字段、不判 HTTP 状态码；L2 自建 Flask app + test_client 判 HTTP 状态码且显式 status != 500；禁止探 /quant/api/v1/terminal8094/health；metric_fingerprint 为继承恒量，仅作继承自检、未用作可复跑相等判据；fixture 由 output/terminal_8094_probe.json evidence 真实读数构造；不对上游胜率数值做相等判定；全程只读 GET，0 写入上游。"
+  },
+  "contract_advisories": [],
+  "base": "http://127.0.0.1:8000",
+  "target": "apps/api/terminal8094.py 规整层 · Phase 3 验收",
+  "method": "L1 import+fixture 回放（必跑） / L2 自建 Flask app+test_client（fixture-replay）+ 只读 GET 在线冒烟",
+  "check_time": "2026-11-17T19:15:39+08:00",
+  "params": {
+    "base": "http://127.0.0.1:8000",
+    "upstream_base": null,
+    "self_test_negative": false,
+    "negative_control": false,
+    "l2_base": "http://127.0.0.1:8000",
+    "l2_strict": false,
+    "module": "F:\\workbuddy\\spaces\\2026_11_16_16-55-02\\astock-quant-lab\\apps\\api\\terminal8094.py"
+  }
+}

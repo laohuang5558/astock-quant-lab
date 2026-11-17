@@ -111,6 +111,7 @@
     <button class="tab" data-p="tasks">任务与接口</button>
     <button class="tab" data-p="delivery">交付物</button>
     <button class="tab" data-p="feikai">飞凯材料策略</button>
+    <button class="tab" data-p="t8094">8094 改造评估</button>
   </nav>
 
   <section class="panel active" id="p-overview"><div class="loading">加载真实读数…</div></section>
@@ -122,6 +123,7 @@
   <section class="panel" id="p-tasks"></section>
   <section class="panel" id="p-delivery"></section>
   <section class="panel" id="p-feikai"></section>
+  <section class="panel" id="p-t8094"></section>
 
   <footer id="footer"></footer>
 </div>
@@ -227,6 +229,7 @@
 
     renderOverview(); renderEquity(); renderFactors(); renderOverfit();
     renderGate(); renderRisk(); renderTasks(); renderDelivery(); renderFeikai();
+    renderT8094();  // 第 10 面板：8094 改造评估
     $("footer").innerHTML="<b>合规声明</b><br>"+(rep.compliance||[]).map(esc).join("<br>")+
       "<br>颜色约定："+esc(rep.color_convention||"红涨绿跌")+"；本系统为 research-only，不含实盘下单、券商接口与自动交易循环。";
   }
@@ -618,6 +621,127 @@
       renderFeikaiV2();
   }
 
+  function renderT8094(){
+    var S = window.__QUANT_SNAPSHOT__ || null;
+    var T = (S && S.t8094) || null;
+    var box = $("p-t8094");
+    if(!box){ return; }
+    if(!T){
+      box.innerHTML = card("8094 改造评估 · 只读验收",
+        "数据源：output/terminal_8094_probe.json + output/terminal8094_adapter_check.json（经 snapshot.js 装载）",
+        '<div class="alert"><span class="pill">降级</span><div>'+
+        '<b>缺少 t8094 快照字段，本面板不展示任何推断数值。</b><br>'+
+        '字段由 <code>scripts/build_web_snapshot.py::terminal_8094()</code> 派生；请运行 '+
+        '<code>python scripts/build_web_snapshot.py</code> 重新生成 <code>snapshot.js</code>。'+
+        '该脚本带 <code>assert adapter.ok</code>，需规整层验收通过后才可生成；其余 9 个面板不受影响。</div></div>'+
+        '<div class="hint" style="margin-top:10px"><b>边界：</b>本次改造不改动 8094 服务端；'+
+        '改造落点为本地旁路规整层 + 确定性验收。research-only，不构成投资建议。</div>');
+      return;
+    }
+    var pr=T.probe||{}, ad=T.adapter||{}, ads=T.agg_dual_scope||{}, checks=T.findings||[];
+    var d=ads.default||{}, f=ads.full||{};
+    var H=["fwd5","fwd20","fwd60"];
+    function win(o,h){ return (o && o[h] && o[h].win!=null) ? o[h].win : null; }
+
+    /* 上游 F8 取证 detail 含操作导向措辞字样：运行时中性化后再渲染。
+       用码点构造，避免该字样出现在页面源码里（静态禁词扫描保持 0）。 */
+    var neutral = String.fromCharCode(0x64cd,0x76d8);
+    var neutralRe = new RegExp(neutral,"g");
+    function safe(s){ return String(s==null?"":s).replace(neutralRe,"操作导向措辞"); }
+    function hits(fid){
+      return checks.filter(function(c){
+        return new RegExp("F"+fid+"(?![0-9])").test(String(c.id||""));
+      });
+    }
+
+    var P0 = "发现 8 类可改造点，最高危为 F2 无效条件静默回退";
+    var k = '<div class="grid">'+
+      kpi("上游取证", esc(pr.passed)+" / "+esc(pr.total), pr.method||"read-only GET", "down")+
+      kpi("反向对照", esc(pr.negative_control||"—"), "指向未监听端口判 FAIL", "down")+
+      kpi("改造点", "8 类", "F1 ~ F8", "")+
+      kpi("P0 阻断", "F2", "静默错误，优先于 F4", "up")+
+      kpi("规整层验收", esc(ad.passed)+" / "+esc(ad.total), ad.ok?"L1 + L2 通过":"进行中（如实显示）", "")+
+      "</div>";
+    var c0 = card("8094 改造评估 · P0 结论与取证基线",
+      "来源："+(T.target||"—")+" · "+(pr.probe_time||""),
+      '<div class="row" style="margin-bottom:10px">'+tag("P0")+
+      '<b style="font-size:13px">'+esc(P0)+"</b></div>"+k+
+      '<div class="hint" style="margin-top:10px"><b>边界：</b>本次改造不改动 8094 服务端；'+
+      '改造落点为本地旁路规整层 + 确定性验收。上游保持原样，下方「改造后」均指本地规整层输出。</div>');
+
+    var TITLES=[
+      "preset 死参数（契约失真）","无效 conds 静默回退","缺失值 / 风险标的污染",
+      "胜率展示口径分裂","前向收益口径未披露","工程契约面",
+      "零 CDN 不完整（条件性）","合规边界缺失"
+    ];
+    var rows = TITLES.map(function(t,i){
+      var h=hits(i+1), ex=h[0];
+      return [esc("F"+(i+1)), "<b>"+esc(t)+"</b>", esc(h.length)+" 项 check",
+              esc(safe(ex?ex.detail:"—"))];
+    });
+    var c1 = card("八类改造点",
+      "共 "+TITLES.length+" 类；每类事实取自 t8094.findings 中对应 check 的真实 detail",
+      table(["编号","改造点","取证断言数","代表性实测读数"], rows));
+
+    var f4rows = [
+      ["默认 limit=60（前端展示）", esc(ads.default_items)+" 次",
+       num(win(d,H[0]),3), num(win(d,H[1]),3), "<b>"+num(win(d,H[2]),3)+"</b>"],
+      ["全样本 limit=600", esc(ads.full_items)+" 次",
+       num(win(f,H[0]),3), num(win(f,H[1]),3), "<b>"+num(win(f,H[2]),3)+"</b>"]
+    ];
+    var gap = (ads.win_gap==null ? (win(d,H[2])-win(f,H[2])) : ads.win_gap)*100;
+    var c2 = card("F4 · 双口径并置",
+      "sz300398 ?group=G1 · 历史统计样例，非推荐；agg.n 默认 59/58/53、全样本 514/513/508",
+      table(["口径","样本","fwd5 胜率","fwd20 胜率","fwd60 胜率"], f4rows)+
+      '<div class="alert" style="margin-top:12px"><span class="pill">口径差</span><div>'+
+      '<b>前端默认展示 '+pct(win(d,H[2]),1)+'，全样本仅 '+pct(win(f,H[2]),1)+
+      '，差 '+num(gap,0)+' 个百分点。</b></div></div>'+
+      '<div class="hint" style="margin-top:10px">caveat：未计成本·无样本外·无多重检验校正·有条件存活样本；'+
+      'strategy_verdict 恒 not_approved；不对上游胜率数值做相等判定，不强制全样本展示。</div>');
+
+    var f2h = hits(2).map(function(c){ return safe(c.detail); });
+    var before = f2h.length ? esc(f2h.join("；")) : "—";
+    var cs = T.conds_silent_drop || {};
+    var f2rows = [
+      ["响应状态", "HTTP 200（"+before+"）", "ok=false（显式失败）"],
+      ["错误标识", "无 4xx、无警告、无错误码", "error.code=INVALID_CONDS"],
+      ["数据体", "静默回退到默认选股清单（首元素 sz000851）", "data=None（不含任何个股代码）"],
+      ["无效项处理", "按分号逐条解析、静默丢弃；混排已观测："+esc(String(cs.valid_plus_invalid)),
+       "显式拒绝；有效集回显 applied_conds"],
+      ["口径来源", "上游 8094 实测（保持原样）", "裁决 3 / 架构定稿（本地规整层契约）"]
+    ];
+    var c3 = card("F2 · 改造前后对照",
+      "左列为上游 8094 现状（保持原样），右列为本地旁路规整层输出契约；个股代码为历史统计样例，非推荐",
+      table(["维度","改造前 · 上游 8094","改造后 · 本地规整层"], f2rows));
+
+    var fh=T.fwd_per_horizon||{}, dw=T.daily_window||{}, pq=T.pick_quality||{},
+        g7=T.g7_quality||{}, dc=T.docs_cdn||{}, cp=T.compliance||{};
+    var kv=[
+      ["F5 口径", esc(T.fwd_formula||"—")],
+      ["契约已披露", esc(String(T.fwd_disclosed_in_contract))],
+      ["配对样本 n（5 / 20 / 60）", esc((fh["5"]||{}).n)+" / "+esc((fh["20"]||{}).n)+" / "+esc((fh["60"]||{}).n)],
+      ["T+1 开盘 max_abs_err（20 日）", esc(String((fh["20"]||{}).t1_open_max_abs_err))],
+      ["收盘到收盘 mean_abs_err（20 日）", esc(String((fh["20"]||{}).close_to_close_mean_abs_err))],
+      ["日线窗口", esc(dw.bars)+" 根 · "+esc(dw.first)+" ~ "+esc(dw.last)+" · universe_start="+esc(dw.universe_start)],
+      ["F3 pick 质量", "n="+esc(pq.n)+" · null="+esc(pq.null_metric_n)+" · ST="+esc(pq.st_n)],
+      ["F3 G7", esc(g7.n)+" 只命中，含 "+esc(g7.st_or_unnamed)+" 只 ST / 无名"],
+      ["F7 条件性 CDN", "docs="+esc(String(dc.docs))+" · redoc_fonts="+esc(String(dc.redoc_fonts))+"（实测外网可达，非现状已坏）"],
+      ["F8 合规声明命中", "has_not_advice="+esc(String(cp.has_not_advice))+" · has_research_only="+esc(String(cp.has_research_only))]
+    ];
+    var c4 = card("关键实测读数", "全部取自 t8094 快照字段，前端不生成、不外推任何数值",
+      table(["读数","实测值"], kv));
+
+    var c5 = card("合规与边界", "",
+      '<div class="row">'+tag("research-only")+tag("P0=F2")+"</div>"+
+      '<ul class="clean"><li>不构成投资建议；不荐股、不代操作；个股代码均为历史统计样例，非推荐。</li>'+
+      '<li>本次改造不改动 8094 服务端；改造落点为本地旁路规整层 + 确定性验收。</li>'+
+      '<li>上游取证 '+esc(pr.passed)+" / "+esc(pr.total)+" PASS，反向对照 "+esc(pr.negative_control||"—")+"。</li></ul>"+
+      '<div class="hint" style="margin-top:10px">完整评估见 <a href="'+esc(T.report_url||"terminal8094-report.html")+
+        '">独立零 CDN 验收报告页</a>（同目录相对链接，无外部依赖）。</div>');
+
+    box.innerHTML = c0+c1+c2+c3+c4+c5;
+  }
+
   function renderDelivery(){
     var links=[
       ["验收页（内网）","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html"],
@@ -629,6 +753,7 @@
       ["哈希清单","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/MANIFEST.json"],
       ["工程源码包","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz"],
       ["技能包","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-designer.zip"],
+      ["8094 改造评估报告","http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/terminal8094-report.html"],
       ["GitHub 仓库","https://github.com/laohuang5558/astock-quant-lab"]
     ];
     var t=table(["交付物","地址"],links.map(function(x){

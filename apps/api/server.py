@@ -87,6 +87,34 @@ def fail(code: str, message: str):
     return envelope(None, ok=False, code=code, message=message)
 
 
+# --------------------------------------------------------------------------- :8094 旁路规整层
+# 红线：必须在 envelope / fail / ERROR_CODES / API_PREFIX 定义之后再导入并注册，
+# 规整层自身绝不 import server，避免 __main__ 重入与循环依赖。
+try:
+    import importlib.util as _ilu
+
+    _t8094_path = ROOT / "apps" / "api" / "terminal8094.py"
+    _t8094_spec = _ilu.spec_from_file_location("apps_api_terminal8094", _t8094_path)
+    _t8094_mod = _ilu.module_from_spec(_t8094_spec)
+    sys.modules[_t8094_spec.name] = _t8094_mod
+    _t8094_spec.loader.exec_module(_t8094_mod)
+
+    for _code, _status in (
+        ("INVALID_CONDS", 400),
+        ("UPSTREAM_UNAVAILABLE", 502),
+        ("UPSTREAM_TIMEOUT", 504),
+        ("UPSTREAM_CONTRACT_MISMATCH", 502),
+    ):
+        ERROR_CODES.setdefault(_code, _status)
+
+    app.register_blueprint(
+        _t8094_mod.create_blueprint(envelope, fail,
+                                    API_PREFIX + "/terminal8094", ERROR_CODES)
+    )
+except Exception as _exc:  # 规整层不可用时不影响主平台既有接口
+    print(f"WARN terminal8094 blueprint 未挂载: {_exc}", flush=True)
+
+
 def read_equity() -> list[dict]:
     path = OUTPUT / "equity.csv"
     rows: list[dict] = []

@@ -4,7 +4,8 @@
  * 用最小 DOM 桩真实执行 apps/web/index.html 的内联 JS，分别验证：
  *   online  —— location.port=8000，fetch 指向真实后端服务，走 API 数据链路
  *   offline —— location.port=8888，走内联快照（内网静态托管形态）
- * 断言：9 个面板均产出内容、关键真实读数出现、无 JS 运行时异常、无装载失败。
+ * 断言：10 个面板均产出内容、关键真实读数出现、无 JS 运行时异常、无装载失败；
+ * 第 10 面板（8094 改造评估）另做真实读数绑定与「抹掉 t8094 → 降级」反向对照。
  *
  * 用法：node scripts/validate_web_render.js [base_url]
  */
@@ -70,10 +71,10 @@ async function runMode(mode) {
   }
   await new Promise(r => setTimeout(r, mode === 'online' ? 3000 : 400));
 
-  const panels = ['p-overview', 'p-equity', 'p-factors', 'p-overfit', 'p-gate', 'p-risk', 'p-tasks', 'p-delivery', 'p-feikai'];
+  const panels = ['p-overview', 'p-equity', 'p-factors', 'p-overfit', 'p-gate', 'p-risk', 'p-tasks', 'p-delivery', 'p-feikai', 'p-t8094'];
   const allHtml = panels.map(id => (els[id] ? els[id].innerHTML : '')).join('\n');
   if (runtimeErrors.length) console.log('  SYNC ERROR:', runtimeErrors.join(' | '));
-  check(`[${mode}] 9 个面板全部渲染出内容`, panels.every(id => els[id] && els[id].innerHTML.length > 200));
+  check(`[${mode}] 10 个面板全部渲染出内容`, panels.every(id => els[id] && els[id].innerHTML.length > 200));
   const fk = (els['p-feikai'] || {}).innerHTML || '';
   check(`[${mode}] 飞凯材料策略面板含真实读数`, fk.includes('飞凯材料') && fk.includes('不放行')
         && fk.includes('等价随机对照') && fk.length > 400);
@@ -110,8 +111,58 @@ async function runMode(mode) {
   check(`[${mode}] 合规 research-only 声明`, els['p-delivery'].innerHTML.includes('research-only') || (els['footer'] || {}).innerHTML?.includes('research-only'));
   check(`[${mode}] 指纹写入 meta`, metaEl._attrs['content'] === 'e819989972c994d1');
   check(`[${mode}] 模式徽标正确`, (els['badges'].innerHTML || '').includes(mode === 'online' ? '在线服务' : '离线只读快照'));
+  // ── 第 10 面板：8094 改造评估，全部数值必须来自 t8094 快照，禁止恒真 ──
+  const T8 = (ctx.window.__QUANT_SNAPSHOT__ || {}).t8094 || {};
+  const t8 = (els['p-t8094'] || {}).innerHTML || '';
+  const ads = T8.agg_dual_scope || {};
+  const dw = ads.default && ads.default.fwd60 && ads.default.fwd60.win;
+  const fw = ads.full && ads.full.fwd60 && ads.full.fwd60.win;
+  check(`[${mode}] 第 10 面板渲染 8094 改造评估`,
+        t8.length > 600 && t8.includes('8094 改造评估') && t8.includes('F2') && t8.includes('八类改造点'));
+  check(`[${mode}] 第 10 面板绑定上游取证与反向对照计数`,
+        !!T8.probe && t8.includes(String(T8.probe.passed)) && t8.includes(T8.probe.negative_control || '0/32 FAIL')
+        && (T8.findings || []).length >= 32);
+  check(`[${mode}] 第 10 面板绑定 F4 双口径真实胜率（防恒真：两读数必须不同）`,
+        dw != null && fw != null && dw !== fw && t8.includes(dw.toFixed(3)) && t8.includes(fw.toFixed(3)));
+  check(`[${mode}] 第 10 面板绑定 F5 口径与规整层验收计数`,
+        !!T8.fwd_formula && t8.includes(T8.fwd_formula) && !!T8.adapter
+        && t8.includes(String(T8.adapter.passed)) && t8.includes('关键实测读数'));
+  check(`[${mode}] 第 10 面板为只读验收、无装载失败、含 research-only`,
+        !t8.includes('class="err"') && t8.includes('research-only'));
   check(`[${mode}] 同步执行无异常`, runtimeErrors.length === 0);
   return { mode, panels: panels.length, htmlChars: allHtml.length };
+}
+
+// 反向对照：把 t8094 从快照中抹掉后重跑内联 JS，第 10 面板必须降级且不含任何胜率读数
+async function runT8094Negative() {
+  const els2 = {};
+  const doc2 = {
+    getElementById(id) { return els2[id] || (els2[id] = makeEl(id)); },
+    querySelector() { return makeEl('meta-fingerprint'); },
+    querySelectorAll() { return []; },
+  };
+  const ctx2 = {
+    console, document: doc2, location: { port: '8888' }, window: {},
+    fetch: () => Promise.reject(new Error('offline negative control')),
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    Promise, JSON, Math, Number, String, Array, Object, Date, Error, isNaN, AbortSignal,
+  };
+  ctx2.globalThis = ctx2;
+  vm.createContext(ctx2);
+  let err = null;
+  try {
+    vm.runInContext(snapshotJs, ctx2, { filename: 'snapshot.negative.js' });
+    if (ctx2.window.__QUANT_SNAPSHOT__ && 't8094' in ctx2.window.__QUANT_SNAPSHOT__) {
+      delete ctx2.window.__QUANT_SNAPSHOT__.t8094;
+    }
+    vm.runInContext(inline, ctx2, { filename: 'index.inline.negative.js' });
+  } catch (e) { err = e.message; }
+  await new Promise(r => setTimeout(r, 400));
+  const html2 = (els2['p-t8094'] || {}).innerHTML || '';
+  check('[对照] 抹掉 t8094 → 第 10 面板显示降级提示而非空白',
+        !err && html2.includes('降级') && html2.includes('缺少 t8094 快照字段'));
+  check('[对照] 降级态不展示任何推断胜率读数',
+        !html2.includes('0.906') && !html2.includes('0.596') && !html2.includes('90.6%'));
 }
 
 (async () => {
@@ -130,6 +181,7 @@ async function runMode(mode) {
   for (const mode of (SOURCE ? ['offline'] : ['online', 'offline'])) {
     results.push(await runMode(mode));
   }
+  await runT8094Negative();
   let bad = 0;
   for (const [name, ok] of CHECKS) {
     if (!ok) { bad++; console.log('  FAIL', name); }

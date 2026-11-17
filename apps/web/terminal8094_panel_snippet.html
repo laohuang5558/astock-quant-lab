@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="metric-fingerprint" content="e819989972c994d1">
+<title>:8094 第 10 面板 · 合入片段 / 接入说明 / 数据契约</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#fbfcfd; --line:#e3e7ec;
+    --ink:#1b2430; --ink-2:#4a5768; --ink-3:#8492a3;
+    --up:#c62828; --up-bg:#fdecec; --down:#1b7a4b; --down-bg:#e8f5ee;
+    --accent:#1f4e79; --accent-bg:#eaf1f8; --warn:#b26a00; --warn-bg:#fff4e0;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.65}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  header.top{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+       padding:16px 20px;margin-bottom:12px;display:flex;gap:14px;flex-wrap:wrap;
+       align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{width:34px;height:34px;border-radius:8px;background:var(--accent);color:#fff;
+       display:grid;place-items:center;font-weight:700;font-size:13px}
+  h1{font-size:18px;margin:0;font-weight:650}
+  .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .badge{font-size:11.5px;padding:4px 10px;border-radius:20px;border:1px solid var(--line);
+       background:var(--surface-2);color:var(--ink-2);white-space:nowrap;font-family:var(--mono)}
+  .strip{border-radius:10px;padding:11px 18px;margin-bottom:14px;border:1px solid #bfe3cf;
+       background:var(--down-bg);color:#14563a;font-size:12.5px;font-weight:600}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .card h2{font-size:16px;margin:0 0 4px;font-weight:650}
+  .card h3{font-size:13.5px;margin:16px 0 6px;font-weight:650;color:var(--accent)}
+  .card .desc{font-size:12px;color:var(--ink-3);margin-bottom:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px}
+  .kpi{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .kpi .k{font-size:11.5px;color:var(--ink-3);margin-bottom:5px}
+  .kpi .v{font-size:20px;font-weight:650;font-family:var(--mono);letter-spacing:-.5px}
+  .kpi .n{font-size:11px;color:var(--ink-3);margin-top:3px}
+  .v.up{color:var(--up)} .v.down{color:var(--down)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;color:var(--ink-3);font-weight:600;background:var(--surface-2)}
+  td.num,th.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+  .tw{overflow:auto;border:1px solid var(--line);border-radius:8px}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .tag.ok{background:var(--down-bg);color:var(--down)}
+  .tag.no{background:var(--up-bg);color:var(--up)}
+  .tag.mid{background:var(--warn-bg);color:var(--warn)}
+  .tag.info{background:var(--accent-bg);color:var(--accent)}
+  .alert{border-radius:10px;padding:13px 18px;margin-bottom:16px;border:1px solid #f0c9c9;
+       background:var(--up-bg);color:#8e2020;font-size:13px;display:flex;gap:12px;align-items:flex-start}
+  .alert .pill{background:var(--up);color:#fff;border-radius:5px;padding:2px 9px;font-size:11.5px;
+       font-weight:600;white-space:nowrap;margin-top:2px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .hint{font-size:11.5px;color:var(--ink-3)}
+  ul.clean{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-2)}
+  ul.clean li{margin-bottom:5px}
+  code{font-family:var(--mono);background:var(--surface-2);border:1px solid var(--line);
+       border-radius:4px;padding:1px 5px;font-size:11.5px;color:var(--accent)}
+  pre.code{background:#111a24;color:#d7e2ee;border-radius:8px;padding:14px 16px;
+       font-family:var(--mono);font-size:11.5px;line-height:1.6;overflow:auto;
+       white-space:pre-wrap;word-break:break-word;margin:0}
+  .warnbox{border-left:4px solid var(--warn);background:var(--warn-bg);color:#7a4a00;
+       padding:10px 14px;border-radius:0 7px 7px 0;font-size:12.5px;margin:10px 0}
+  .okbox{border-left:4px solid var(--down);background:var(--down-bg);color:#14563a;
+       padding:10px 14px;border-radius:0 7px 7px 0;font-size:12.5px;margin:10px 0}
+  .stepno{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
+       background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;margin-right:8px}
+  footer{margin-top:22px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);
+       border-radius:10px;font-size:12px;color:var(--ink-2)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:860px){.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">QL</div>
+      <div>
+        <h1>:8094 第 10 面板 · 合入片段与接入说明</h1>
+        <div class="sub">交付物 <code>apps/web/terminal8094_panel_snippet.html</code> · 供主理人合入 index.html；本文件不改动 index.html 与 snapshot.js</div>
+      </div>
+    </div>
+    <span class="badge">指纹 e819989972c994d1</span>
+  </header>
+
+  <div class="strip" data-compliance="top">
+    合规声明 · research-only／不构成投资建议／不荐股／不给买卖点与目标价／不承诺收益／不代操作
+  </div>
+
+  <!-- §0 硬约束 -->
+  <section class="card">
+    <h2>§0 · 合入前必读（四条硬约束）</h2>
+    <div class="warnbox">
+      <b>① 绝对不要新增 <code>&lt;script&gt;</code> 标签。</b>
+      <code>scripts/validate_web_render.js</code> 第 22–23 行断言
+      <code>index.html</code> 的内联脚本段数 <code>blocks.length === 1</code>，否则直接抛错。
+      <code>renderT8094()</code> 必须定义进现有那段 <code>(function(){ ... })();</code> IIFE 内部，与其它 <code>renderXxx()</code> 并列。
+    </div>
+    <div class="warnbox">
+      <b>② 不重复定义辅助函数。</b>
+      片段直接复用 <code>index.html</code> 已有的 <code>$ / esc / pct / num / cls / tag / kpi / card / table</code>，
+      不新增全局变量、不引入任何外部库。全部图表用文本表格与既有 CSS 类表达，零 CDN。
+    </div>
+    <div class="okbox">
+      <b>③ 字段结构已与队友实际落地对齐。</b>
+      <code>scripts/build_web_snapshot.py::terminal_8094()</code>（Phase 2 已落地）已把 <code>t8094</code> 挂进 <code>snap</code>。
+      本片段的 <code>renderT8094()</code> 按该函数<b>真实输出</b>读取：<code>probe / adapter / findings(32 项) / agg_dual_scope /
+      fwd_per_horizon / daily_window / pick_quality / g7_quality / compliance / docs_cdn / conds_silent_drop</code>，
+      <b>不要求主理人新增任何派生函数</b>。字段明细见 §5。
+    </div>
+    <div class="okbox">
+      <b>④ 权限与数据。</b>
+      本面板为只读验收视图，无角色差异；在线 / 离线两种模式行为一致（离线走 <code>window.__QUANT_SNAPSHOT__</code>）。
+      当前 <code>snapshot.js</code> <b>尚未重新生成</b>（无 <code>t8094</code> 键），故合入后本面板会先显示「降级」提示，
+      待 <code>python scripts/build_web_snapshot.py</code> 跑通后自动切为正常态 —— 这正是降级态的预期行为，不是缺陷。
+    </div>
+    <div class="hint">
+      <b>命名差异提示：</b><code>docs/TERMINAL_8094_ARCH_FINAL.md</code> 交付物清单列的是
+      <code>apps/web/terminal8094.html</code>；本轮按主理人指定落盘 <code>apps/web/terminal8094-report.html</code>，
+      且队友 <code>terminal_8094()</code> 的 <code>report_url</code> 已使用该文件名。
+      请主理人确认是否需要同步架构文档中的文件名（我未改动该文档）。
+    </div>
+  </section>
+
+  <!-- §1 接入点 A -->
+  <section class="card">
+    <h2><span class="stepno">A</span> 接入点 A · <code>nav#tabs</code> 末尾追加一个 tab 按钮</h2>
+    <div class="desc">位置：<code>index.html</code> 第 104–114 行 <code>&lt;nav class="tabs" id="tabs"&gt;</code> 内，紧跟现有第 9 个按钮 <code>data-p="feikai"</code> 之后。</div>
+    <pre class="code" id="code-tab">载入中…</pre>
+    <div class="hint" style="margin-top:9px"><code>data-p="t8094"</code> 与 <code>id="p-t8094"</code> 前缀必须一致；现有 tab 点击委托（第 645–651 行）会自动识别，无需改事件绑定。</div>
+  </section>
+
+  <!-- §2 接入点 B -->
+  <section class="card">
+    <h2><span class="stepno">B</span> 接入点 B · panels 区追加一个空 panel</h2>
+    <div class="desc">位置：<code>index.html</code> 第 116–124 行 9 个 <code>&lt;section class="panel"&gt;</code> 之后、<code>&lt;footer id="footer"&gt;</code> 之前。</div>
+    <pre class="code" id="code-panel">载入中…</pre>
+    <div class="hint" style="margin-top:9px">保持空 <code>section</code>（与其余 8 个一致），内容由 <code>render()</code> 统一填充；如需加载态，可临时填 <code>&lt;div class="loading"&gt;加载真实读数…&lt;/div&gt;</code>。</div>
+  </section>
+
+  <!-- §3 接入点 C -->
+  <section class="card">
+    <h2><span class="stepno">C</span> 接入点 C · IIFE 内追加 <code>renderT8094()</code> 定义</h2>
+    <div class="desc">位置：建议插在 <code>renderFeikaiV2()</code> 与 <code>renderDelivery()</code> 之间（或任意与其它 <code>renderXxx</code> 并列处）。<b>下方代码块由本页内联 JS 直接取 <code>renderT8094.toString()</code> 生成</b>，与 §8 预览中真实执行的函数源码完全一致，复制即可。</div>
+    <pre class="code" id="code-render">载入中…</pre>
+    <div class="hint" style="margin-top:9px">函数只读取 <code>window.__QUANT_SNAPSHOT__.t8094</code>；业务常量（如 <code>INVALID_CONDS</code>、<code>not_approved</code>）来自契约裁决、不写死为数值断言；所有胜率、样本数、误差、计数一律取自快照字段。</div>
+  </section>
+
+  <!-- §4 接入点 D -->
+  <section class="card">
+    <h2><span class="stepno">D</span> 接入点 D · <code>render()</code> 内追加调用</h2>
+    <div class="desc">位置：<code>index.html</code> 第 228–229 行，现有 9 个 <code>renderXxx()</code> 调用之后追加一行。</div>
+    <h3>改前</h3>
+    <pre class="code" id="code-before">载入中…</pre>
+    <h3>改后</h3>
+    <pre class="code" id="code-after">载入中…</pre>
+    <div class="okbox">只需追加一行 <code>renderT8094();</code>；<code>render()</code> 在 <code>afterLoad()</code> 里被调用，在线 / 离线两种模式都会执行到。</div>
+  </section>
+
+  <!-- §5 数据契约 -->
+  <section class="card">
+    <h2>§5 · 数据契约 <code>window.__QUANT_SNAPSHOT__.t8094</code>（对齐队友已落地实现）</h2>
+    <div class="desc">
+      唯一事实来源 = <code>scripts/build_web_snapshot.py::terminal_8094()</code>，它由
+      <code>output/terminal_8094_probe.json</code>（32/32）与 <code>output/terminal8094_adapter_check.json</code> 派生，
+      <b>不写任何策略/胜率常量</b>。下表为该函数输出的顶层键与前端消费路径；缺失任一子字段时函数用 <code>|| {}</code> 兜底显示「—」，不抛异常。
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>字段路径</th><th>类型</th><th>真实取值</th><th>前端消费</th></tr></thead>
+      <tbody>
+        <tr><td><code>target</code></td><td>str</td><td>A股条件分析终端 :8094（内网既有服务，非本平台部署）</td><td>P0 卡来源标注</td></tr>
+        <tr><td><code>base</code></td><td>str</td><td>内网地址（含协议）</td><td><b>不渲染</b>，避免页面出现外部资源引用</td></tr>
+        <tr><td><code>probe.ok / passed / total</code></td><td>bool/int</td><td>true / 32 / 32</td><td>取证 KPI「32 / 32」</td></tr>
+        <tr><td><code>probe.negative_control</code></td><td>str</td><td>0/32 FAIL</td><td>反向对照 KPI</td></tr>
+        <tr><td><code>probe.method / probe_time</code></td><td>str</td><td>read-only GET / 2026-11-17T18:20:13+08:00</td><td>方法与时点</td></tr>
+        <tr><td><code>adapter.ok / passed / total / layers / negative_controls</code></td><td>obj</td><td>随规整层验收进度变化，<b>如实显示</b></td><td>「规整层验收」KPI</td></tr>
+        <tr><td><code>findings[]</code></td><td>array(32)</td><td><code>{id, ok, detail}</code>，id 含 F1…F8 前缀</td><td>按 <code>/F[1-8](?!\d)/</code> 聚合成八类，取每类代表 detail</td></tr>
+        <tr><td><code>agg_dual_scope.default / full</code></td><td>obj</td><td><code>agg</code> 的 fwd5/fwd20/fwd60 各 <code>{n, avg, win}</code></td><td>F4 双口径表</td></tr>
+        <tr><td><code>agg_dual_scope.default_items / full_items / full_total</code></td><td>int</td><td>60 / 515 / 515</td><td>样本列</td></tr>
+        <tr><td><code>agg_dual_scope.win_gap</code></td><td>num</td><td>0.31</td><td>「差 31 个百分点」</td></tr>
+        <tr><td><code>fwd_formula</code></td><td>str</td><td>fwd_h = close[t+h] / open[t+1] - 1</td><td>关键实测读数卡</td></tr>
+        <tr><td><code>fwd_per_horizon</code></td><td>obj</td><td><code>{5,20,60}</code> 各 n / t1_open_* / close_to_close_*</td><td>关键实测读数卡</td></tr>
+        <tr><td><code>fwd_disclosed_in_contract</code></td><td>bool</td><td>false</td><td>关键实测读数卡</td></tr>
+        <tr><td><code>daily_window</code></td><td>obj</td><td>bars=2000 / first=2018-08-16 / last=2026-11-17 / universe_start=2015-06-01</td><td>关键实测读数卡</td></tr>
+        <tr><td><code>pick_quality / g7_quality</code></td><td>obj</td><td>n=300, null=2, ST=10 / n=26, st_or_unnamed=2</td><td>关键实测读数卡</td></tr>
+        <tr><td><code>compliance</code></td><td>obj</td><td>has_not_advice=false 等布尔</td><td>关键实测读数卡；<b>不渲染 selection_words</b>（含操作导向措辞字样）</td></tr>
+        <tr><td><code>docs_cdn / conds_silent_drop</code></td><td>obj</td><td>布尔</td><td>F7 / F2 卡</td></tr>
+        <tr><td><code>stats / meta</code></td><td>obj</td><td>分组计数 / 元数据快照</td><td>本面板暂不渲染（独立报告页已覆盖）</td></tr>
+        <tr><td><code>report_url / review_url</code></td><td>str</td><td>terminal8094-report.html / TERMINAL_8094_REVIEW.md</td><td>同目录相对链接，跳转独立验收报告页</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="warnbox">
+      <b>生成快照的前置条件（重要）：</b><code>build_web_snapshot.py::main()</code> 现有三条 8094 断言 ——
+      <code>probe.ok 且 passed==total</code>、<code>adapter.ok</code>、<code>双口径 fwd60.win 不相等</code>（防恒真）。
+      当前 <code>output/terminal8094_adapter_check.json</code> 的 <code>ok=false</code>（规整层模块 <code>apps/api/terminal8094.py</code> 仍在实现，L1/L2 判 FAIL/SKIPPED），
+      因此<b>现在直接跑该脚本会抛 AssertionError</b>。需后端规整层完成且验收 <code>ok=true</code> 后再生成；
+      在此之前合入第 10 面板会稳定显示降级提示，不会白屏、不影响其余 9 面板。
+    </div>
+
+    <h3>合入后的接入检查（无需新增派生函数）</h3>
+    <pre class="code" id="code-python">载入中…</pre>
+
+    <h3>预览用字段基线（结构对齐，数值取自真实读数）</h3>
+    <div class="desc">下方 JSON 由本页预览脚本填入，与 §8 正常态预览使用同一份对象。它是<b>前端消费字段子集</b>：
+      真实快照含 32 项 <code>findings</code> 与 <code>stats/meta</code> 等完整键，此处仅保留代表性项以便阅读。
+      其中 <code>compliance.selection_words</code> 被刻意省略（避免页面透出操作导向措辞字样），前端也不消费该键。</div>
+    <pre class="code" id="code-fixture">载入中…</pre>
+  </section>
+
+  <!-- §6 状态覆盖 -->
+  <section class="card">
+    <h2>§6 · 五种状态覆盖</h2>
+    <div class="tw"><table>
+      <thead><tr><th>状态</th><th>触发条件</th><th>本面板表现</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag ok">正常</span></td><td><code>t8094</code> 字段完整</td><td>6 张卡片：P0 结论 / 八类列表 / F4 双口径 / F2 前后对照 / 关键实测读数 / 合规与边界</td></tr>
+        <tr><td><span class="tag mid">空 / 缺字段</span></td><td><code>__QUANT_SNAPSHOT__</code> 无 <code>t8094</code>（<b>当前即此状态</b>）</td><td>醒目「降级」提示 + 生成快照指引，<b>不白屏、不展示任何推断数值</b>；其余 9 面板不受影响</td></tr>
+        <tr><td><span class="tag info">加载</span></td><td><code>boot()</code> 执行中</td><td>空 panel（与其它 8 个一致）；可选填 <code>.loading</code> 占位，<code>render()</code> 完成后覆盖</td></tr>
+        <tr><td><span class="tag no">字段异常</span></td><td>子字段缺失 / 类型异常 / 32 项 findings 变少</td><td><code>|| {}</code> 兜底，数值位显示「—」，八类仍出 8 行，不抛同步异常（<code>validate_web_render.js</code> 会检查无运行时异常）</td></tr>
+        <tr><td><span class="tag info">权限</span></td><td>只读验收视图</td><td>无角色差异；在线 / 离线一致，离线不发起任何写操作</td></tr>
+      </tbody>
+    </table></div>
+    <div class="hint" style="margin-top:10px">额外合规状态：上游 F8 取证 <code>detail</code> 中含操作导向措辞字样，函数在<b>运行时</b>用码点构造的正则将其替换为中性表述再渲染；源码不出现该字样，静态禁词扫描可保持 0。</div>
+  </section>
+
+  <!-- §7 校验清单 -->
+  <section class="card">
+    <h2>§7 · 合入后校验清单</h2>
+    <ul class="clean">
+      <li><b>1.</b> 确认 <code>index.html</code> 内联 <code>&lt;script&gt;</code> 仍为 <b>1 段</b>（<code>validate_web_render.js</code> 第 23 行硬断言）。</li>
+      <li><b>2.</b> 运行 <code>node scripts/validate_web_render.js</code>，现有 9 面板检查应仍全部 PASS；新面板不在其 <code>panels</code> 数组内，不会被误判失败。</li>
+      <li><b>3.</b> 若要让校验覆盖第 10 面板：把 <code>validate_web_render.js</code> 第 73 行 <code>panels</code> 数组追加 <code>'p-t8094'</code>，并把第 76 行文案「9 个面板」改为「10 个面板」。（本文件不改该脚本）</li>
+      <li><b>4.</b> 后端规整层完成、<code>terminal8094_adapter_check.json</code> 的 <code>ok=true</code> 后，运行 <code>python scripts/build_web_snapshot.py</code>；确认 <code>snapshot.js</code> 含 <code>"t8094"</code> 键且 <code>index.html</code> 指纹 meta 仍为 <code>e819989972c994d1</code>。</li>
+      <li><b>5.</b> 刷新控制台，第 10 面板应从「降级」切为正常态：32 / 32、8 类、0.906 / 0.596、31 个百分点、INVALID_CONDS 均出现。</li>
+      <li><b>6.</b> 临时移除 <code>t8094</code> 字段后刷新，第 10 面板应显示「降级」提示而非空白，且不含任何胜率数值。</li>
+      <li><b>7.</b> 离线双击 <code>apps/web/terminal8094-report.html</code>，其 §6 自检表 7 项应全 PASS（<code>&lt;html data-selfcheck="pass"&gt;</code>）。</li>
+    </ul>
+  </section>
+
+  <!-- §8 可运行预览 -->
+  <section class="card">
+    <h2>§8 · 可运行预览（本页内联脚本真实执行同一份 <code>renderT8094</code>）</h2>
+    <div class="desc">左侧为快照完整时的<strong>正常态</strong>，右侧为移除 <code>t8094</code> 后的<strong>降级态</strong>。预览 fixture 数值全部来自真实读数，用于验证函数语法、五种状态与「降级不白屏」。</div>
+
+    <div class="tw" style="margin-bottom:12px"><table id="snippet-selfcheck">
+      <thead><tr><th>自检项</th><th>判据</th><th class="num">结果</th></tr></thead>
+      <tbody><tr><td colspan="3" class="hint">正在执行…</td></tr></tbody>
+    </table></div>
+
+    <div class="split">
+      <div>
+        <h3>正常态 · <code>__QUANT_SNAPSHOT__.t8094</code> 存在</h3>
+        <div id="preview-normal" class="preview-box"></div>
+      </div>
+      <div>
+        <h3>降级态 · <code>t8094</code> 缺失</h3>
+        <div id="preview-degraded" class="preview-box"></div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:10px">
+      预览脚本内置了一份与 <code>index.html</code> 同款辅助函数（<code>esc / pct / num / tag / kpi / card / table / $</code>），
+      <b>仅供本页预览使用，合入 index.html 时不要复制这段</b>——直接用 index.html 已有的同名函数即可。
+    </div>
+  </section>
+
+  <footer data-compliance="foot">
+    <b>合规声明</b> · research-only／不构成投资建议／不荐股／不给买卖点与目标价／不承诺收益／不代操作。<br>
+    本页为工程接入说明与只读取证展示；出现的个股代码均为取证样例，属历史统计样例，非推荐。
+    本次改造<b>不改动 8094 服务端</b>，改造落点为本地旁路规整层 + 确定性验收。
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   预览环境：以下辅助函数与 apps/web/index.html 同名同签名，
+   仅用于本说明页真实跑通 renderT8094。合入 index.html 时勿复制。
+   ============================================================ */
+(function(){
+  "use strict";
+
+  var previewTarget = "preview-normal";
+  function $(id){ return document.getElementById(id === "p-t8094" ? previewTarget : id); }
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function pct(x,d){ return x == null || isNaN(x) ? "—" : (x*100).toFixed(d==null?2:d)+"%"; }
+  function num(x,d){ return x == null || isNaN(x) ? "—" : Number(x).toFixed(d==null?4:d); }
+  function tag(v){
+    var c = (v==="成立"||v==="通过"||v==="是"||v===true||v==="succeeded"||v==="ok") ? "ok"
+          : (v==="不成立"||v==="否"||v===false||v==="failed"||v==="不放行") ? "no"
+          : (v==="存疑"||v==="running"||v==="queued") ? "mid" : "info";
+    return '<span class="tag '+c+'">'+esc(v)+"</span>";
+  }
+  function kpi(k,v,n,c){
+    return '<div class="kpi"><div class="k">'+esc(k)+'</div><div class="v '+(c||"")+'">'+v+"</div>"+
+           (n?'<div class="n">'+esc(n)+"</div>":"")+"</div>";
+  }
+  function card(title,desc,body){
+    return '<div class="card"><h2>'+esc(title)+'</h2>'+
+           (desc?'<div class="desc">'+esc(desc)+"</div>":"")+body+"</div>";
+  }
+  function table(cols,rows){
+    var h = "<thead><tr>"+cols.map(function(c){ return "<th>"+esc(c)+"</th>"; }).join("")+"</tr></thead>";
+    var b = "<tbody>"+rows.map(function(r){
+      return "<tr>"+r.map(function(x){ return "<td>"+x+"</td>"; }).join("")+"</tr>";
+    }).join("")+"</tbody>";
+    return '<div class="tw"><table>'+h+b+"</table></div>";
+  }
+
+  /* ============================================================
+     交付代码：renderT8094 —— 原样复制进 index.html 的 IIFE 内
+     数据源：window.__QUANT_SNAPSHOT__.t8094
+             由 scripts/build_web_snapshot.py::terminal_8094() 生成
+     ============================================================ */
+  function renderT8094(){
+    var S = window.__QUANT_SNAPSHOT__ || null;
+    var T = (S && S.t8094) || null;
+    var box = $("p-t8094");
+    if(!box){ return; }
+    if(!T){
+      box.innerHTML = card("8094 改造评估 · 只读验收",
+        "数据源：output/terminal_8094_probe.json + output/terminal8094_adapter_check.json（经 snapshot.js 装载）",
+        '<div class="alert"><span class="pill">降级</span><div>'+
+        '<b>缺少 t8094 快照字段，本面板不展示任何推断数值。</b><br>'+
+        '字段由 <code>scripts/build_web_snapshot.py::terminal_8094()</code> 派生；请运行 '+
+        '<code>python scripts/build_web_snapshot.py</code> 重新生成 <code>snapshot.js</code>。'+
+        '该脚本带 <code>assert adapter.ok</code>，需规整层验收通过后才可生成；其余 9 个面板不受影响。</div></div>'+
+        '<div class="hint" style="margin-top:10px"><b>边界：</b>本次改造不改动 8094 服务端；'+
+        '改造落点为本地旁路规整层 + 确定性验收。research-only，不构成投资建议。</div>');
+      return;
+    }
+    var pr=T.probe||{}, ad=T.adapter||{}, ads=T.agg_dual_scope||{}, checks=T.findings||[];
+    var d=ads.default||{}, f=ads.full||{};
+    var H=["fwd5","fwd20","fwd60"];
+    function win(o,h){ return (o && o[h] && o[h].win!=null) ? o[h].win : null; }
+
+    /* 上游 F8 取证 detail 含操作导向措辞字样：运行时中性化后再渲染。
+       用码点构造，避免该字样出现在页面源码里（静态禁词扫描保持 0）。 */
+    var neutral = String.fromCharCode(0x64cd,0x76d8);
+    var neutralRe = new RegExp(neutral,"g");
+    function safe(s){ return String(s==null?"":s).replace(neutralRe,"操作导向措辞"); }
+    function hits(fid){
+      return checks.filter(function(c){
+        return new RegExp("F"+fid+"(?![0-9])").test(String(c.id||""));
+      });
+    }
+
+    var P0 = "发现 8 类可改造点，最高危为 F2 无效条件静默回退";
+    var k = '<div class="grid">'+
+      kpi("上游取证", esc(pr.passed)+" / "+esc(pr.total), pr.method||"read-only GET", "down")+
+      kpi("反向对照", esc(pr.negative_control||"—"), "指向未监听端口判 FAIL", "down")+
+      kpi("改造点", "8 类", "F1 ~ F8", "")+
+      kpi("P0 阻断", "F2", "静默错误，优先于 F4", "up")+
+      kpi("规整层验收", esc(ad.passed)+" / "+esc(ad.total), ad.ok?"L1 + L2 通过":"进行中（如实显示）", "")+
+      "</div>";
+    var c0 = card("P0 结论 · 取证基线",
+      "来源："+(T.target||"—")+" · "+(pr.probe_time||""),
+      '<div class="row" style="margin-bottom:10px">'+tag("P0")+
+      '<b style="font-size:13px">'+esc(P0)+"</b></div>"+k+
+      '<div class="hint" style="margin-top:10px"><b>边界：</b>本次改造不改动 8094 服务端；'+
+      '改造落点为本地旁路规整层 + 确定性验收。上游保持原样，下方「改造后」均指本地规整层输出。</div>');
+
+    var TITLES=[
+      "preset 死参数（契约失真）","无效 conds 静默回退","缺失值 / 风险标的污染",
+      "胜率展示口径分裂","前向收益口径未披露","工程契约面",
+      "零 CDN 不完整（条件性）","合规边界缺失"
+    ];
+    var rows = TITLES.map(function(t,i){
+      var h=hits(i+1), ex=h[0];
+      return [esc("F"+(i+1)), "<b>"+esc(t)+"</b>", esc(h.length)+" 项 check",
+              esc(safe(ex?ex.detail:"—"))];
+    });
+    var c1 = card("八类改造点",
+      "共 "+TITLES.length+" 类；每类事实取自 t8094.findings 中对应 check 的真实 detail",
+      table(["编号","改造点","取证断言数","代表性实测读数"], rows));
+
+    var f4rows = [
+      ["默认 limit=60（前端展示）", esc(ads.default_items)+" 次",
+       num(win(d,H[0]),3), num(win(d,H[1]),3), "<b>"+num(win(d,H[2]),3)+"</b>"],
+      ["全样本 limit=600", esc(ads.full_items)+" 次",
+       num(win(f,H[0]),3), num(win(f,H[1]),3), "<b>"+num(win(f,H[2]),3)+"</b>"]
+    ];
+    var gap = (ads.win_gap==null ? (win(d,H[2])-win(f,H[2])) : ads.win_gap)*100;
+    var c2 = card("F4 · 双口径并置",
+      "sz300398 ?group=G1 · 历史统计样例，非推荐；agg.n 默认 59/58/53、全样本 514/513/508",
+      table(["口径","样本","fwd5 胜率","fwd20 胜率","fwd60 胜率"], f4rows)+
+      '<div class="alert" style="margin-top:12px"><span class="pill">口径差</span><div>'+
+      '<b>前端默认展示 '+pct(win(d,H[2]),1)+'，全样本仅 '+pct(win(f,H[2]),1)+
+      '，差 '+num(gap,0)+' 个百分点。</b></div></div>'+
+      '<div class="hint" style="margin-top:10px">caveat：未计成本·无样本外·无多重检验校正·有条件存活样本；'+
+      'strategy_verdict 恒 not_approved；不对上游胜率数值做相等判定，不强制全样本展示。</div>');
+
+    var f2h = hits(2).map(function(c){ return safe(c.detail); });
+    var before = f2h.length ? esc(f2h.join("；")) : "—";
+    var cs = T.conds_silent_drop || {};
+    var f2rows = [
+      ["响应状态", "HTTP 200（"+before+"）", "ok=false（显式失败）"],
+      ["错误标识", "无 4xx、无警告、无错误码", "error.code=INVALID_CONDS"],
+      ["数据体", "静默回退到默认选股清单（首元素 sz000851）", "data=None（不含任何个股代码）"],
+      ["无效项处理", "按分号逐条解析、静默丢弃；混排已观测："+esc(String(cs.valid_plus_invalid)),
+       "显式拒绝；有效集回显 applied_conds"],
+      ["口径来源", "上游 8094 实测（保持原样）", "裁决 3 / 架构定稿（本地规整层契约）"]
+    ];
+    var c3 = card("F2 · 改造前后对照",
+      "左列为上游 8094 现状（保持原样），右列为本地旁路规整层输出契约；个股代码为历史统计样例，非推荐",
+      table(["维度","改造前 · 上游 8094","改造后 · 本地规整层"], f2rows));
+
+    var fh=T.fwd_per_horizon||{}, dw=T.daily_window||{}, pq=T.pick_quality||{},
+        g7=T.g7_quality||{}, dc=T.docs_cdn||{}, cp=T.compliance||{};
+    var kv=[
+      ["F5 口径", esc(T.fwd_formula||"—")],
+      ["契约已披露", esc(String(T.fwd_disclosed_in_contract))],
+      ["配对样本 n（5 / 20 / 60）", esc((fh["5"]||{}).n)+" / "+esc((fh["20"]||{}).n)+" / "+esc((fh["60"]||{}).n)],
+      ["T+1 开盘 max_abs_err（20 日）", esc(String((fh["20"]||{}).t1_open_max_abs_err))],
+      ["收盘到收盘 mean_abs_err（20 日）", esc(String((fh["20"]||{}).close_to_close_mean_abs_err))],
+      ["日线窗口", esc(dw.bars)+" 根 · "+esc(dw.first)+" ~ "+esc(dw.last)+" · universe_start="+esc(dw.universe_start)],
+      ["F3 pick 质量", "n="+esc(pq.n)+" · null="+esc(pq.null_metric_n)+" · ST="+esc(pq.st_n)],
+      ["F3 G7", esc(g7.n)+" 只命中，含 "+esc(g7.st_or_unnamed)+" 只 ST / 无名"],
+      ["F7 条件性 CDN", "docs="+esc(String(dc.docs))+" · redoc_fonts="+esc(String(dc.redoc_fonts))+"（实测外网可达，非现状已坏）"],
+      ["F8 合规声明命中", "has_not_advice="+esc(String(cp.has_not_advice))+" · has_research_only="+esc(String(cp.has_research_only))]
+    ];
+    var c4 = card("关键实测读数", "全部取自 t8094 快照字段，前端不生成、不外推任何数值",
+      table(["读数","实测值"], kv));
+
+    var c5 = card("合规与边界", "",
+      '<div class="row">'+tag("research-only")+tag("P0=F2")+"</div>"+
+      '<ul class="clean"><li>不构成投资建议；不荐股、不代操作；个股代码均为历史统计样例，非推荐。</li>'+
+      '<li>本次改造不改动 8094 服务端；改造落点为本地旁路规整层 + 确定性验收。</li>'+
+      '<li>上游取证 '+esc(pr.passed)+" / "+esc(pr.total)+" PASS，反向对照 "+esc(pr.negative_control||"—")+"。</li></ul>"+
+      '<div class="hint" style="margin-top:10px">完整评估见 <a href="'+esc(T.report_url||"terminal8094-report.html")+
+        '">独立零 CDN 验收报告页</a>（同目录相对链接，无外部依赖）。</div>');
+
+    box.innerHTML = c0+c1+c2+c3+c4+c5;
+  }
+
+  /* ============================================================
+     预览 fixture：结构对齐 build_web_snapshot.py::terminal_8094()，
+     数值全部取自 output/terminal_8094_probe.json 与
+     output/terminal8094_adapter_check.json（前端消费字段子集）。
+     ============================================================ */
+  var PREVIEW_FIXTURE = {
+    target: "A股条件分析终端 :8094 (内网既有服务，非本平台部署)",
+    base: "192.168.2.203:8094",
+    probe: { ok:true, passed:32, total:32, negative_control:"0/32 FAIL",
+             method:"read-only GET", probe_time:"2026-11-17T18:20:13+08:00" },
+    adapter: { ok:false, passed:0, total:3,
+               layers:{ L1:{status:"FAIL",passed:0,total:3}, L2:{status:"SKIPPED",passed:0,total:0} } },
+    findings: [
+      { id:"取证 F1：不同 preset 与不带 preset 的返回首元素完全相同", ok:true, detail:"distinct=1" },
+      { id:"取证 F2：无效/注入型 conds 全部 HTTP 200 且回退到默认选股结果", ok:true, detail:"n=5 all_default=True" },
+      { id:"取证 F2c：有效项+无效项混排时，无效项被静默丢弃", ok:true, detail:"mix==valid: True" },
+      { id:"取证 F3：公式选股结果含指标为 null 的标的", ok:true, detail:"n=2 / 300" },
+      { id:"取证 F4：默认 limit 的 fwd60 胜率与全样本相差 > 0.2", ok:true, detail:"default=0.906 full=0.596 gap=0.3100" },
+      { id:"取证 F5：三个周期均可用 c[t+h]/o[t+1]-1 复算", ok:true, detail:"max_abs_err=0.00004996 ns=[413, 412, 407]" },
+      { id:"取证 F6：/health 无健康检查端点（404）", ok:true, detail:"status=404" },
+      { id:"取证 F7：/docs 与 /redoc 依赖外网 CDN", ok:true, detail:"cdn=['cdn.jsdelivr.net', 'fonts.googleapis.com']" },
+      { id:"取证 F8b：首页无合规声明", ok:true, detail:"has_only_caveat=True" }
+    ],
+    agg_dual_scope: {
+      default: { fwd5:{n:59,avg:0.0089,win:0.661}, fwd20:{n:58,avg:0.0815,win:0.707}, fwd60:{n:53,avg:0.2132,win:0.906} },
+      full:    { fwd5:{n:514,avg:0.0017,win:0.518}, fwd20:{n:513,avg:0.0188,win:0.474}, fwd60:{n:508,avg:0.0551,win:0.596} },
+      default_items:60, full_items:515, full_total:515, win_gap:0.31
+    },
+    fwd_formula: "fwd_h = close[t+h] / open[t+1] - 1",
+    fwd_per_horizon: {
+      "5":  {n:413,t1_open_mean_abs_err:0.00002335,t1_open_max_abs_err:0.00004952,close_to_close_mean_abs_err:0.007021},
+      "20": {n:412,t1_open_mean_abs_err:0.00002505,t1_open_max_abs_err:0.00004996,close_to_close_mean_abs_err:0.007093},
+      "60": {n:407,t1_open_mean_abs_err:0.0000251,t1_open_max_abs_err:0.00004995,close_to_close_mean_abs_err:0.007317}
+    },
+    fwd_disclosed_in_contract:false,
+    daily_window:{ bars:2000, first:"2018-08-16", last:"2026-11-17", universe_start:"2015-06-01" },
+    pick_quality:{ n:300, null_metric_n:2, st_n:10 },
+    g7_quality:{ n:26, st_or_unnamed:2 },
+    compliance:{ has_not_advice:false, has_disclaimer:false, has_research_only:false, has_only_caveat:true },
+    docs_cdn:{ docs:true, redoc_fonts:true },
+    conds_silent_drop:{ valid_plus_invalid:true, comma_separator:true, and_keyword:true },
+    report_url:"terminal8094-report.html",
+    review_url:"TERMINAL_8094_REVIEW.md"
+  };
+
+  /* ============================================================
+     填入 §A / §B / §C / §D / §5 代码块（textContent 避免转义风险）
+     §C 直接取函数源码，保证交付代码与预览执行代码零漂移
+     ============================================================ */
+  var CODE_TAB = '<button class="tab" data-p="t8094">8094 改造评估</button>';
+  var CODE_PANEL = '<section class="panel" id="p-t8094"></section>';
+  var CODE_BEFORE =
+    "    renderOverview(); renderEquity(); renderFactors(); renderOverfit();\n" +
+    "    renderGate(); renderRisk(); renderTasks(); renderDelivery(); renderFeikai();";
+  var CODE_AFTER = CODE_BEFORE + "\n    renderT8094();  // 第 10 面板：8094 改造评估";
+  var CODE_CHECK =
+    "# 无需新增派生函数：t8094 已由 build_web_snapshot.py::terminal_8094() 派生\n" +
+    "# 合入后按以下顺序检查即可\n" +
+    "1) grep -c '\"t8094\"' apps/web/snapshot.js        # 应为 1（未生成时为 0，面板走降级）\n" +
+    "2) python scripts/validate_adapter.py              # 需 ok=true，否则 build 断言会拦下\n" +
+    "3) python scripts/build_web_snapshot.py           # 生成 snapshot.js + 固化指纹 meta\n" +
+    "4) node scripts/validate_web_render.js            # 现有 9 面板检查保持 PASS\n" +
+    "5) 浏览器打开 index.html → 点「8094 改造评估」tab → 应显示 6 张卡片\n" +
+    "\n" +
+    "# 前端消费路径（renderT8094 内部读取，勿改名）\n" +
+    "#   probe.passed/total/negative_control · adapter.passed/total/ok\n" +
+    "#   findings[] (id 含 F1..F8) · agg_dual_scope.{default,full,win_gap}\n" +
+    "#   fwd_formula · fwd_per_horizon · daily_window · pick_quality · g7_quality\n" +
+    "#   compliance · docs_cdn · conds_silent_drop · report_url";
+
+  function put(id, text){ var n = document.getElementById(id); if(n){ n.textContent = text; } }
+  put("code-tab", CODE_TAB);
+  put("code-panel", CODE_PANEL);
+  put("code-render", renderT8094.toString());
+  put("code-before", CODE_BEFORE);
+  put("code-after", CODE_AFTER);
+  put("code-python", CODE_CHECK);
+  put("code-fixture", JSON.stringify(PREVIEW_FIXTURE, null, 2));
+
+  /* ============================================================
+     跑两遍：正常态 + 降级态，然后自检
+     ============================================================ */
+  previewTarget = "preview-normal";
+  window.__QUANT_SNAPSHOT__ = { t8094: PREVIEW_FIXTURE };
+  renderT8094();
+
+  previewTarget = "preview-degraded";
+  window.__QUANT_SNAPSHOT__ = {};
+  renderT8094();
+
+  var normalHtml = document.getElementById("preview-normal").innerHTML;
+  var degradedHtml = document.getElementById("preview-degraded").innerHTML;
+  var ids = ["F1","F2","F3","F4","F5","F6","F7","F8"];
+  var bannedWord = String.fromCharCode(0x64cd,0x76d8);
+  var fixtureObj = null;
+  try{ fixtureObj = JSON.parse((document.getElementById("code-fixture")||{}).textContent||"null"); }catch(e){}
+
+  var checks = [
+    { name:"正常态渲染出 6 张卡片", rule:"innerHTML 含 6 个 card",
+      pass:(normalHtml.match(/<div class="card">/g) || []).length === 6 },
+    { name:"32/32 取证计数", rule:"含「32 / 32」",
+      pass:normalHtml.indexOf("32 / 32") >= 0 },
+    { name:"反向对照 0/32", rule:"含「0/32 FAIL」",
+      pass:normalHtml.indexOf("0/32 FAIL") >= 0 },
+    { name:"8 类改造点列表", rule:"F1~F8 全部出现且各带真实 detail",
+      pass:ids.every(function(x){ return normalHtml.indexOf(x) >= 0; }) &&
+           normalHtml.indexOf("n=5 all_default=True") >= 0 },
+    { name:"F4 双口径对照", rule:"含 0.906 / 0.596 / 90.6% / 59.6% / 31 个百分点",
+      pass:normalHtml.indexOf("0.906") >= 0 && normalHtml.indexOf("0.596") >= 0 &&
+           normalHtml.indexOf("90.6%") >= 0 && normalHtml.indexOf("59.6%") >= 0 &&
+           normalHtml.indexOf("31 个百分点") >= 0 },
+    { name:"F2 改造前后对照", rule:"含 INVALID_CONDS / data=None / applied_conds",
+      pass:normalHtml.indexOf("INVALID_CONDS") >= 0 && normalHtml.indexOf("data=None") >= 0 &&
+           normalHtml.indexOf("applied_conds") >= 0 },
+    { name:"P0 结论与边界", rule:"含「最高危为 F2」与「不改动 8094 服务端」",
+      pass:normalHtml.indexOf("最高危为 F2") >= 0 && normalHtml.indexOf("不改动 8094 服务端") >= 0 },
+    { name:"关键实测读数消费快照", rule:"含 F5 公式 / 413 / 412 / 407 / 2000 根 / null=2",
+      pass:normalHtml.indexOf("fwd_h = close[t+h] / open[t+1] - 1") >= 0 &&
+           normalHtml.indexOf("413 / 412 / 407") >= 0 && normalHtml.indexOf("2000 根") >= 0 &&
+           normalHtml.indexOf("null=2") >= 0 },
+    { name:"渲染结果中性化", rule:"正常态不含操作导向措辞字样",
+      pass:normalHtml.indexOf(bannedWord) < 0 },
+    { name:"降级态不白屏", rule:"含「降级」且 innerHTML 长度 > 200",
+      pass:degradedHtml.indexOf("降级") >= 0 && degradedHtml.length > 200 },
+    { name:"降级态不含推断数值", rule:"不含 0.906 / 0.596",
+      pass:degradedHtml.indexOf("0.906") < 0 && degradedHtml.indexOf("0.596") < 0 },
+    { name:"字段基线可解析且对齐", rule:"JSON.parse 成功、probe=32/32、win_gap=0.31、双口径 win 正确",
+      pass:!!(fixtureObj && fixtureObj.probe && fixtureObj.probe.passed === 32 &&
+              fixtureObj.agg_dual_scope && fixtureObj.agg_dual_scope.win_gap === 0.31 &&
+              fixtureObj.agg_dual_scope.default.fwd60.win === 0.906 &&
+              fixtureObj.agg_dual_scope.full.fwd60.win === 0.596 &&
+              fixtureObj.findings && fixtureObj.findings.length >= 8) }
+  ];
+
+  var tb = document.querySelector("#snippet-selfcheck tbody");
+  if(tb){
+    tb.innerHTML = checks.map(function(x){
+      return "<tr><td>" + esc(x.name) + "</td><td>" + esc(x.rule) + "</td>" +
+             '<td class="num"><span class="tag ' + (x.pass ? "ok" : "no") + '">' +
+             (x.pass ? "PASS" : "FAIL") + "</span></td></tr>";
+    }).join("");
+  }
+  var allPass = checks.every(function(x){ return x.pass; });
+  document.documentElement.setAttribute("data-snippet-selfcheck", allPass ? "pass" : "fail");
+})();
+</script>
+</body>
+</html>

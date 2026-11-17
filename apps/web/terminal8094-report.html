@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="metric-fingerprint" content="e819989972c994d1">
+<title>:8094 改造评估 · 确定性验收报告（research-only）</title>
+<style>
+  /* 设计令牌：与 apps/web/index.html 完全同源，保证验收页与控制台观感一致 */
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface-2:#fbfcfd; --line:#e3e7ec;
+    --ink:#1b2430; --ink-2:#4a5768; --ink-3:#8492a3;
+    --up:#c62828; --up-bg:#fdecec; --down:#1b7a4b; --down-bg:#e8f5ee;
+    --accent:#1f4e79; --accent-bg:#eaf1f8; --warn:#b26a00; --warn-bg:#fff4e0;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.65}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  header.top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+       background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-bottom:12px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{width:34px;height:34px;border-radius:8px;background:var(--accent);color:#fff;
+       display:grid;place-items:center;font-weight:700;font-size:14px;letter-spacing:-1px}
+  h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
+  .sub{font-size:12px;color:var(--ink-3);margin-top:2px}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .badge{font-size:11.5px;padding:4px 10px;border-radius:20px;border:1px solid var(--line);
+       background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+  .badge.mono{font-family:var(--mono);font-size:11px}
+  .badge.ok{background:var(--down-bg);border-color:#bfe3cf;color:var(--down)}
+
+  /* 置顶合规声明 */
+  .strip{border-radius:10px;padding:12px 18px;margin-bottom:14px;border:1px solid #bfe3cf;
+       background:var(--down-bg);color:#14563a;font-size:13px;font-weight:600;line-height:1.7}
+  .strip .lead{display:inline-block;background:var(--down);color:#fff;border-radius:5px;
+       padding:2px 9px;font-size:11.5px;margin-right:10px;vertical-align:1px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .card h2{font-size:16px;margin:0 0 4px;font-weight:650}
+  .card h3{font-size:13.5px;margin:16px 0 6px;font-weight:650;color:var(--accent)}
+  .card .desc{font-size:12px;color:var(--ink-3);margin-bottom:12px}
+  .verdict{border:1px solid #f0c9c9;background:var(--up-bg);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .verdict .pill{background:var(--up);color:#fff;border-radius:5px;padding:3px 10px;font-size:12px;
+       font-weight:600;display:inline-block;margin-bottom:9px}
+  .verdict .big{font-size:17px;font-weight:700;color:#8e2020;line-height:1.6;margin:0 0 10px}
+  .boundary{margin-top:12px;border-left:4px solid var(--warn);background:var(--warn-bg);
+       padding:10px 14px;border-radius:0 7px 7px 0;font-size:13px;color:#7a4a00}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px}
+  .kpi{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .kpi .k{font-size:11.5px;color:var(--ink-3);margin-bottom:5px}
+  .kpi .v{font-size:20px;font-weight:650;font-family:var(--mono);letter-spacing:-.5px}
+  .kpi .n{font-size:11px;color:var(--ink-3);margin-top:3px}
+  .v.up{color:var(--up)} .v.down{color:var(--down)}
+
+  .toc{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .toc a{font-size:12px;padding:5px 11px;border:1px solid var(--line);border-radius:20px;
+       background:var(--surface);color:var(--accent);text-decoration:none}
+  .toc a:hover{background:var(--accent-bg)}
+  .legend-note{font-size:11.5px;color:var(--ink-3);background:var(--surface-2);
+       border:1px dashed var(--line);border-radius:7px;padding:9px 13px;margin:0 0 14px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;color:var(--ink-3);font-weight:600;background:var(--surface-2)}
+  tr:last-child td{border-bottom:0}
+  td.num,th.num{font-family:var(--mono);text-align:right;white-space:nowrap}
+  .tw{overflow:auto;border:1px solid var(--line);border-radius:8px}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .tag.ok{background:var(--down-bg);color:var(--down)}
+  .tag.no{background:var(--up-bg);color:var(--up)}
+  .tag.mid{background:var(--warn-bg);color:var(--warn)}
+  .tag.info{background:var(--accent-bg);color:var(--accent)}
+  code,pre,.mono{font-family:var(--mono)}
+  code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;
+       padding:1px 5px;font-size:11.5px;color:var(--accent)}
+  pre.log{background:#111a24;color:#d7e2ee;border-radius:8px;padding:13px 15px;
+       font-size:11.5px;line-height:1.6;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  ul.clean{margin:6px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-2)}
+  ul.clean li{margin-bottom:5px}
+  .hint{font-size:11.5px;color:var(--ink-3)}
+  .fcard{border-top:3px solid var(--accent)}
+  .fcard.p0{border-top-color:var(--up)}
+  .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+  .fact{background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:10px 12px}
+  .fact .lbl{font-size:11px;color:var(--ink-3);font-weight:600;margin-bottom:5px;letter-spacing:.3px}
+  .fact .txt{font-size:12px;color:var(--ink-2);line-height:1.6}
+
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .col{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .col .hd{padding:9px 13px;font-size:12.5px;font-weight:650}
+  .col.before .hd{background:var(--up-bg);color:#8e2020}
+  .col.after .hd{background:var(--down-bg);color:#14563a}
+  .col ul{margin:0;padding:11px 13px 11px 30px;font-size:12px;color:var(--ink-2);line-height:1.75}
+
+  /* 纯 CSS 条形：零图表库、零脚本依赖 */
+  .bars{margin-top:8px}
+  .barrow{display:grid;grid-template-columns:150px 1fr 58px;gap:10px;align-items:center;margin:6px 0;font-size:12px}
+  .barrow .lb{color:var(--ink-2)}
+  .bartrack{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;height:15px;overflow:hidden}
+  .barfill{height:100%;border-radius:4px 0 0 4px;background:var(--accent)}
+  .barfill.warn{background:var(--warn)}
+  .barrow .vl{font-family:var(--mono);text-align:right;color:var(--ink)}
+  .chart{width:100%;height:auto;display:block;border:1px solid var(--line);border-radius:8px;background:var(--surface-2)}
+
+  .steps{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0 4px}
+  .step{background:var(--accent-bg);border:1px solid #c8dcee;color:var(--accent);
+       border-radius:7px;padding:8px 13px;font-size:12.5px;font-weight:650}
+  .arrow{color:var(--ink-3);font-size:14px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .rejected{border-left:4px solid var(--ink-3);padding:4px 0 4px 13px;margin:9px 0;font-size:12.5px;color:var(--ink-2)}
+  .rejected b{color:var(--ink)}
+  footer{margin-top:22px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);
+       border-radius:10px;font-size:12px;color:var(--ink-2)}
+  .btn{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:7px;
+       padding:7px 14px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .btn.ghost{background:var(--surface);color:var(--accent);border-color:var(--line)}
+  #selfcheck td.st{font-weight:650}
+  #selfcheck td.st.pass{color:var(--down)}
+  #selfcheck td.st.fail{color:var(--up)}
+  @media(max-width:860px){.split,.facts,.compare{grid-template-columns:1fr}.barrow{grid-template-columns:110px 1fr 52px}}
+  @media print{header.top,.toc,.btn{display:none}.card,.verdict,.strip{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">QL</div>
+      <div>
+        <h1>:8094 改造评估 · 确定性验收报告</h1>
+        <div class="sub">内网既有「A股条件分析终端」v0.1.0 · 只读取证 · 独立零 CDN 验收页</div>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge ok">● 离线可完整渲染</span>
+      <span class="badge mono">指纹 e819989972c994d1</span>
+      <span class="badge mono">取证 2026-11-17 18:20 GMT+8</span>
+      <button class="btn ghost" type="button" onclick="window.print()">打印 / 存为 PDF</button>
+    </div>
+  </header>
+
+  <!-- 置顶合规声明（data-compliance：自检脚本识别为合规声明节点，与正文内容区区分） -->
+  <div class="strip" data-compliance="top" id="compliance-top">
+    <span class="lead">合规声明 · 置顶</span>
+    research-only／不构成投资建议／不荐股／不给买卖点与目标价／不承诺收益／不代操作
+  </div>
+
+  <!-- 首屏结论先行 -->
+  <div class="verdict">
+    <span class="pill">验证结论</span>
+    <p class="big">发现 8 类可改造点，最高危为 F2 无效条件静默回退。</p>
+    <div class="grid">
+      <div class="kpi"><div class="k">上游取证</div><div class="v down">32/32</div><div class="n">全部 PASS，只读 GET</div></div>
+      <div class="kpi"><div class="k">反向对照</div><div class="v down">0/32</div><div class="n">指向未监听端口判 FAIL、退出码 1</div></div>
+      <div class="kpi"><div class="k">改造点</div><div class="v">8 类</div><div class="n">F1 ~ F8，逐条可复跑</div></div>
+      <div class="kpi"><div class="k">P0 阻断</div><div class="v up">F2</div><div class="n">静默错误，优先于 F4</div></div>
+    </div>
+    <div class="boundary">
+      <b>边界声明：</b>本次改造<b>不改动 8094 服务端</b>；改造落点为<b>本地旁路规整层 + 确定性验收</b>。
+      上游服务仍保持原样，本报告中的「改造后」均指本地规整层输出，<b>不代表上游已被修好</b>。
+    </div>
+  </div>
+
+  <div class="legend-note">
+    <b>读数来源</b>：<code>output/terminal_8094_probe.json</code>、<code>docs/TERMINAL_8094_EVIDENCE.md</code>、
+    <code>docs/TERMINAL_8094_PHASE1.md</code>。本页不生成、不外推任何数值。
+    本页出现的个股代码（<code>sz000851</code>、<code>sh600323</code>、<code>sz300398</code>、
+    <code>sz300326</code>、<code>sz200570</code> 等）均为取证样例，属<b>历史统计样例，非推荐</b>。
+  </div>
+
+  <nav class="toc" aria-label="章节导航">
+    <a href="#s1">① 取证基线</a><a href="#s2">② 八类改造点</a>
+    <a href="#f1">F1</a><a href="#f2">F2</a><a href="#f3">F3</a><a href="#f4">F4</a>
+    <a href="#f5">F5</a><a href="#f6">F6</a><a href="#f7">F7</a><a href="#f8">F8</a>
+    <a href="#s3">③ F2 前后对照</a><a href="#s4">④ P95 延迟</a><a href="#s5">⑤ 改造方案</a><a href="#s6">⑥ 零 CDN 自检</a>
+  </nav>
+
+  <main id="report-body">
+
+    <!-- ① 取证基线 -->
+    <section class="card" id="s1">
+      <h2>① 取证基线与反向对照</h2>
+      <div class="desc">方法：只读 GET，未发 POST / DELETE，未触发任何任务；断言对象为<strong>观测事实</strong>而非「应当修复」。</div>
+      <div class="tw"><table>
+        <thead><tr><th>项</th><th>实测读数</th></tr></thead>
+        <tbody>
+          <tr><td>服务地址</td><td><code>192.168.2.203:8094</code> · A股条件分析终端 v0.1.0 · nginx + FastAPI · OpenAPI 3.1</td></tr>
+          <tr><td>正向取证</td><td><span class="tag ok">32 / 32 PASS</span> · 30 项观测断言 + 元断言，机读证据 <code>output/terminal_8094_probe.json</code></td></tr>
+          <tr><td>反向对照</td><td><span class="tag ok">0 / 32 PASS</span> · 指向未监听端口全部判 FAIL、退出码 1，证明校验器非恒真</td></tr>
+          <tr><td>数据面</td><td>5,850 只 · 11,647,813 条日线 · <code>latest_date=2026-11-17</code> · <code>built_at=2026-11-17 17:44:47</code> · <code>name_hit=5830</code>（20 只名称缺失）</td></tr>
+          <tr><td>与本平台关系</td><td><b>内网既有服务，非本平台部署</b>。反向对照：本平台 <code>/quant/api/v1/health</code> 在 :8094 为 404；本平台在 :8000，静态交付在 :8888</td></tr>
+          <tr><td>源码可访问性</td><td>HTTP 未暴露源码（<code>/main.py</code> <code>/app</code> <code>/.git/HEAD</code> 均 404）；Filer 上只有本平台工程目录，<b>无 8094 源码</b></td></tr>
+        </tbody>
+      </table></div>
+      <div class="hint" style="margin-top:10px">取证器 <code>scripts/validate_terminal_8094.py</code> 可复跑；PHASE1 裁决 4 第 3 条已将旧稿「27/27」更正为 32/32，一律以机读证据为准。</div>
+    </section>
+
+    <!-- ② 八类改造点 -->
+    <h2 style="font-size:16px;margin:22px 0 10px">② 八类改造点 · 事实 / 口径 / 影响</h2>
+
+    <section class="card fcard" id="f1" data-f="F1">
+      <h2>F1 · <code>preset</code> 是死参数（契约失真）</h2>
+      <div class="desc"><span class="tag info">Could</span> 契约层问题，<b>不是功能故障</b></div>
+      <div class="facts">
+        <div class="fact"><div class="lbl">事实</div><div class="txt">OpenAPI 为 <code>/api/pick</code> 声明 <code>preset</code>（<code>params=['conds','limit','market','preset']</code>）。实测传入 6 个不同预设与不传参数，返回首元素完全相同，<code>distinct=1</code>。</div></div>
+        <div class="fact"><div class="lbl">口径</div><div class="txt">前端实际做法是把 <code>PRESETS[v]</code> 填入 <code>#cond-input</code>，再以 <code>conds</code> 提交；后端 <code>preset</code> 参数不消费。<b>前端 6 个预设可用</b>，公式选股通道本身有效。</div></div>
+        <div class="fact"><div class="lbl">影响</div><div class="txt">契约声明与实现不一致，按契约接入的第三方（U3）会得到错误预期；主受害方仅 U3，RICE 0.4。</div></div>
+      </div>
+    </section>
+
+    <section class="card fcard p0" id="f2" data-f="F2">
+      <h2>F2 · 无效 <code>conds</code> 静默回退 <span class="tag no">最高危 · P0 阻断</span></h2>
+      <div class="desc">「静默错误」而非「显式失败」：不报错、不返回 4xx、不携带任何警告。</div>
+      <div class="facts">
+        <div class="fact"><div class="lbl">事实</div><div class="txt">5 个无效 / 注入型 <code>conds</code>（<code>1/0</code>、<code>__import__('os').getcwd()</code>、裸 <code>cci_w</code>、空串、<code>close&gt;0 or 1==1</code>）全部 HTTP 200 且回退默认选股结果，<code>n=5 all_default=True</code>。</div></div>
+        <div class="fact"><div class="lbl">精确机制</div><div class="txt">上游按分号 <code>;</code> 逐条解析，无法解析的项<b>静默丢弃</b>；全部无效时退化为默认公式选股清单，首元素恒为 <code>sz000851 *ST高鸿</code>（收盘 0.38 元）。<code>cci_w&gt;99;1/0</code> 与 <code>cci_w&gt;99</code> 结果完全相同；逗号 / <code>AND</code> 关键字静默退化。注入型字符串未被求值，<b>不构成安全漏洞</b>。</div></div>
+        <div class="fact"><div class="lbl">影响</div><div class="txt">使用者误以为所写条件全部生效：写 3 条拼错 1 条 → 按 2 条执行返回 200；整条写错 → 拿到默认清单。有效 <code>cci_w&gt;99</code> 返回不同结果 <code>sh600323</code>，证明通道可用。</div></div>
+      </div>
+      <div class="hint" style="margin-top:10px">上述个股代码为历史统计样例，非推荐。缺陷定位：<b>失败时无反馈 + 无声降级</b>，不是「公式选股不能用」。</div>
+    </section>
+
+    <section class="card fcard" id="f3" data-f="F3">
+      <h2>F3 · 缺失值／风险标的污染选股结果</h2>
+      <div class="desc"><span class="tag info">Must · 实施序第 5 位</span> 无「指标不可用时排除」规则</div>
+      <div class="facts">
+        <div class="fact"><div class="lbl">事实</div><div class="txt"><code>/api/pick</code> 300 条结果含 <code>adx/pdi/mdi=null</code>、<code>bias6=0.0</code>、<code>cci14=0.0</code> 的标的 <b>2 只（null 2/300）</b>；含 ST 股 <b>10 只</b>。</div></div>
+        <div class="fact"><div class="lbl">口径</div><div class="txt"><code>/api/scan?group=G7</code> 当日 <b>26 只</b>命中含 <b>2 只</b> ST / 无名标的：<code>ST凯利</code>（<code>sz300326</code>）与名称为空的 B 股 <code>sz200570</code>。null 指标参与排序 / 比较。</div></div>
+        <div class="fact"><div class="lbl">影响</div><div class="txt">无退市／长期停牌／ST 过滤。规整层按 <code>metric_null / st / unnamed / suspended</code> 过滤并回显 <code>filtered_count</code> / <code>filter_rules</code>；ST 默认排除 + 开关。</div></div>
+      </div>
+      <div class="hint" style="margin-top:10px">上述个股代码为历史统计样例，非推荐。</div>
+    </section>
+
+    <section class="card fcard" id="f4" data-f="F4">
+      <h2>F4 · 胜率展示口径分裂（统计严谨性）</h2>
+      <div class="desc"><code>/api/signals/sz300398?group=G1</code> · 同一标的、同一分组、仅 <code>limit</code> 不同（个股代码为历史统计样例，非推荐）</div>
+
+      <div class="tw"><table>
+        <thead><tr><th>口径</th><th class="num">样本</th><th class="num">fwd5 胜率</th><th class="num">fwd20 胜率</th><th class="num">fwd60 胜率</th></tr></thead>
+        <tbody>
+          <tr><td><b>默认 <code>limit=60</code>（前端展示）</b></td><td class="num">60 次</td><td class="num">0.661</td><td class="num">0.707</td><td class="num"><b>0.906</b></td></tr>
+          <tr><td>全样本 <code>limit=600</code></td><td class="num">515 次</td><td class="num">0.518</td><td class="num">0.474</td><td class="num"><b>0.596</b></td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="boundary" style="margin-top:12px">
+        <b>明确标注：前端默认展示 90.6%，全样本仅 59.6%，差 31 个百分点。</b>
+        界面未标注「最近 60 次」口径；<code>agg</code> 的 n 随周期递减（默认 59 / 58 / 53，全样本 514 / 513 / 508），
+        因未来数据不足用 null 排除，但<b>截断规则未披露</b>，也未说明这是「有条件存活样本」。
+      </div>
+
+      <h3>双口径对照（内联 SVG，零图表库）</h3>
+      <svg class="chart" viewBox="0 0 620 208" preserveAspectRatio="xMidYMid meet" role="img"
+           aria-label="默认 limit 等于 60 的 fwd60 胜率 0.906，全样本 515 次的 fwd60 胜率 0.596，相差 31 个百分点">
+        <text x="14" y="20" font-size="11" fill="#4a5768">前向周期胜率 · 上＝默认 60 次口径，下＝全样本 515 次口径</text>
+        <text x="14" y="52" font-size="11" fill="#1b2430">fwd5</text>
+        <rect x="92" y="40" width="400" height="12" rx="3" fill="#fbfcfd" stroke="#e3e7ec"/>
+        <rect x="92" y="40" width="264.4" height="12" rx="3" fill="#1f4e79"/>
+        <text x="500" y="50" font-size="11" fill="#1f4e79">0.661</text>
+        <rect x="92" y="55" width="400" height="12" rx="3" fill="#fbfcfd" stroke="#e3e7ec"/>
+        <rect x="92" y="55" width="207.2" height="12" rx="3" fill="#b26a00"/>
+        <text x="500" y="65" font-size="11" fill="#b26a00">0.518</text>
+
+        <text x="14" y="98" font-size="11" fill="#1b2430">fwd20</text>
+        <rect x="92" y="86" width="400" height="12" rx="3" fill="#fbfcfd" stroke="#e3e7ec"/>
+        <rect x="92" y="86" width="282.8" height="12" rx="3" fill="#1f4e79"/>
+        <text x="500" y="96" font-size="11" fill="#1f4e79">0.707</text>
+        <rect x="92" y="101" width="400" height="12" rx="3" fill="#fbfcfd" stroke="#e3e7ec"/>
+        <rect x="92" y="101" width="189.6" height="12" rx="3" fill="#b26a00"/>
+        <text x="500" y="111" font-size="11" fill="#b26a00">0.474</text>
+
+        <text x="14" y="144" font-size="11" fill="#1b2430">fwd60</text>
+        <rect x="92" y="132" width="400" height="12" rx="3" fill="#fbfcfd" stroke="#e3e7ec"/>
+        <rect x="92" y="132" width="362.4" height="12" rx="3" fill="#1f4e79"/>
+        <text x="500" y="142" font-size="11" fill="#1f4e79">0.906</text>
+        <rect x="92" y="147" width="400" height="12" rx="3" fill="#fbfcfd" stroke="#e3e7ec"/>
+        <rect x="92" y="147" width="238.4" height="12" rx="3" fill="#b26a00"/>
+        <text x="500" y="157" font-size="11" fill="#b26a00">0.596</text>
+
+        <line x1="92" y1="176" x2="492" y2="176" stroke="#e3e7ec"/>
+        <text x="14" y="196" font-size="11" fill="#8e2020">差额 31 个百分点</text>
+        <rect x="150" y="182" width="124" height="12" rx="3" fill="#c62828" opacity="0.75"/>
+        <text x="282" y="192" font-size="11" fill="#8e2020">0.906 − 0.596 = 0.310</text>
+        <text x="14" y="30" font-size="0" fill="none">bar width = value × 400</text>
+      </svg>
+      <div class="hint" style="margin-top:8px">条形宽度 = 胜率 × 400（内联静态绘制，无脚本参与）。颜色不单独承载信息，数值以文本并列给出。</div>
+
+      <h3>披露缺口</h3>
+      <div class="facts">
+        <div class="fact"><div class="lbl">响应字段</div><div class="txt"><code>response_keys=['agg','code','group','items','name','total']</code>；<code>present=[]</code> —— 无随机对照、无样本外拆分、无基准超额、无成本模型、无多重检验校正、无置信区间。</div></div>
+        <div class="fact"><div class="lbl">唯一相关文案</div><div class="txt">「单只标的的历史命中统计，样本有限，仅作回看，不代表可复制的胜率」——只覆盖单股回看，未覆盖选股清单与全市场扫描。</div></div>
+        <div class="fact"><div class="lbl">规整层处置</div><div class="txt"><b>双口径并置</b>，各带 <code>sample_n / window / limit / truncation_rule</code> + caveat + <code>strategy_verdict</code> 恒 <code>not_approved</code>；<b>不对上游胜率数值做相等判定</b>，<b>不强制</b>全样本展示。</div></div>
+      </div>
+      <div class="hint" style="margin-top:10px">对照：本平台 v1/v2 研究对同一主题给出的裁决是「工程可复跑 / 策略级结论不放行」，含 HAC t、BH-FDR、DSR、等价随机对照、预注册冻结与 <code>oos_use_count</code>。</div>
+    </section>
+
+    <section class="card fcard" id="f5" data-f="F5">
+      <h2>F5 · 前向收益口径反推（可复算，缺口在披露）</h2>
+      <div class="desc">主理人裁决 4 第 1 条更正：F5 <b>不是「不可复算」</b>，改造建议为<b>补披露</b>，不是改算法、也不是标 UNVERIFIABLE。</div>
+      <pre class="log">verified_formula : fwd_h = close[t+h] / open[t+1] - 1
+口径含义       : 信号次日开盘（T+1 open）买入，持有 h 日后收盘
+三周期样本     : n = 413 / 412 / 407   （h = 5 / 20 / 60）
+T+1 开盘口径   : 最大绝对误差 4.996e-05 （仅 4 位小数舍入）
+收盘到收盘口径 : 平均误差约 0.007      （0.007021 / 0.007093 / 0.007317）</pre>
+      <div class="boundary" style="margin-top:12px">
+        <b>算法自洽可复算，缺口是未披露 + 日线截断 2000 根。</b>
+        <code>fwd_disclosed_in_contract=false</code>（OpenAPI schema 为空、无字段说明）；单股日线<b>硬截断在 2,000 根</b>，
+        首根 <code>2018-08-16</code>、末根 <code>2026-11-17</code>，而 <code>meta.universe_start=2015-06-01</code> ——
+        历史窗口与元数据不一致，且 <code>days=999999</code> 仍只返回 2,000 根。
+      </div>
+      <div class="hint" style="margin-top:10px">早期用收盘到收盘口径自算时多处相差 0.7~1.2 个百分点（如 2026-11-10 自算 -0.0566 / 接口 -0.0448，差 -0.0118），曾疑似算错；全样本反推确认是<b>口径不同</b>，非计算错误。</div>
+    </section>
+
+    <section class="card fcard" id="f6" data-f="F6">
+      <h2>F6 · 工程契约面 <span class="tag ok">Must · 实施序第 1 位</span></h2>
+      <div class="tw"><table>
+        <thead><tr><th>项</th><th>实测</th></tr></thead>
+        <tbody>
+          <tr><td><code>/health</code>、<code>/api/health</code></td><td>均 404，无健康检查端点</td></tr>
+          <tr><td><code>days=-1</code></td><td>HTTP 200 正常返回，无参数下界校验</td></tr>
+          <tr><td><code>days=999999</code></td><td>HTTP 200，<b>449,253 B（449 KB）</b>响应，无上界</td></tr>
+          <tr><td><code>limit=999999</code></td><td>HTTP 200，无上界</td></tr>
+          <tr><td>非法代码 <code>/api/stock/NOTEXIST</code></td><td><code>{"detail":"代码格式无法识别"}</code> —— FastAPI 原生错误体，非统一响应信封</td></tr>
+          <tr><td>响应头</td><td>缺 <code>cache-control</code>、<code>content-security-policy</code>、<code>x-content-type-options</code>、<code>x-request-id</code></td></tr>
+          <tr><td>契约体</td><td>所有 200 响应 <code>schema: {}</code>（<b>8 处</b>），无法生成客户端或做响应校验；无版本前缀、无幂等键、无指标指纹</td></tr>
+        </tbody>
+      </table></div>
+      <div class="hint" style="margin-top:10px">本期 Must = 统一信封最小集 <code>ok/data/request_id/server_time</code> + <code>error.code=INVALID_CONDS</code> + 参数边界（<code>days≤2000</code>、<code>limit</code> 上限）。<code>/health</code>、幂等键、指标指纹、安全响应头归入「<b>继承能力（不计入本期验收）</b>」，由既有 <code>envelope()</code> / <code>_IDEMPOTENCY</code> / <code>/quant/api/v1/health</code> 零边际成本继承。</div>
+    </section>
+
+    <section class="card fcard" id="f7" data-f="F7">
+      <h2>F7 · 零 CDN 不完整（条件性风险）</h2>
+      <div class="facts">
+        <div class="fact"><div class="lbl">事实</div><div class="txt">主页面 ECharts 已本地托管（<code>/static/echarts.min.js</code>，1,030,855 B，说明作者有离线意识），但 <code>/docs</code> 依赖 <code>cdn.jsdelivr.net</code>、<code>/redoc</code> 依赖 <code>fonts.googleapis.com</code>。</div></div>
+        <div class="fact"><div class="lbl">口径</div><div class="txt"><b>条件性风险</b>：本次实测外网可达，故为「内网隔离或离线时文档白屏」，<b>不是现状已坏</b>。本平台静态版是零 CDN，两者口径不一致。</div></div>
+        <div class="fact"><div class="lbl">影响</div><div class="txt">拆两层：自建验收页零 CDN = Must 可判定；8094 <code>/docs</code> / <code>/redoc</code> 零 CDN = <b>前瞻加固、不计 PASS/FAIL</b>（服务端静态页规整层改不到）。</div></div>
+      </div>
+    </section>
+
+    <section class="card fcard" id="f8" data-f="F8">
+      <h2>F8 · 合规边界缺失 <span class="tag ok">Must · 实施序第 2 位</span></h2>
+      <div class="facts">
+        <div class="fact"><div class="lbl">事实</div><div class="txt">首页 37,906 字符，含「选股」7 /「运行」3 /「胜率」4 等操作导向措辞，并输出具体个股清单 + 后 5/20/60 日胜率。</div></div>
+        <div class="fact"><div class="lbl">口径</div><div class="txt">全文「不构成投资建议」「免责」「research-only」「风险」命中 <b>0 次</b>；唯一相关文案只覆盖单股回看，未覆盖选股清单与全市场扫描。</div></div>
+        <div class="fact"><div class="lbl">影响</div><div class="txt"><b>合规红线</b>。disclaimer 在 envelope 层统一注入，含错误／降级响应的<b>全量覆盖 100%</b>；本验收页置顶声明 + 零 CDN + 页脚固定声明。</div></div>
+      </div>
+    </section>
+
+    <!-- ③ F2 改造前后对照 -->
+    <section class="card" id="s3">
+      <h2>③ 改造前后的 F2 行为对照</h2>
+      <div class="desc">同一组无效 <code>conds</code>：左列为上游 8094 现状（未改动），右列为<b>本地旁路规整层</b>输出。</div>
+      <div class="compare">
+        <div class="col before">
+          <div class="hd">改造前 · 上游 8094（保持原样）</div>
+          <ul>
+            <li>HTTP <b>200</b>，请求「成功」</li>
+            <li>无 <code>ok=false</code>、无 <code>4xx</code>、无警告字段</li>
+            <li>静默<b>回退到默认选股结果</b>，首元素恒为 <code>sz000851 *ST高鸿</code></li>
+            <li>无效项按分号逐条解析时被<b>静默丢弃</b>，不提示少了哪一条</li>
+            <li>使用者误以为所写条件<b>全部生效</b></li>
+          </ul>
+        </div>
+        <div class="col after">
+          <div class="hd">改造后 · 本地旁路规整层（本次交付范围）</div>
+          <ul>
+            <li><code>ok=false</code> —— 显式失败</li>
+            <li><code>error.code=INVALID_CONDS</code>（单一事实来源，无顶层别名）</li>
+            <li><code>data=None</code>（或 <code>[]</code>），<b>data 中不含任何个股代码</b></li>
+            <li>有效集 <code>ok=true</code> 并回显 <code>applied_conds</code>，首元素≠<code>sz000851</code></li>
+            <li>成功／错误／降级响应均带完整 disclaimer</li>
+          </ul>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:10px">上述个股代码为历史统计样例，非推荐。右列由裁决 3（统一 <code>error.code</code>、取消顶层别名、<code>data</code> 接受 None / []）与裁决 2（复用既有 <code>envelope()</code>）共同约束。</div>
+    </section>
+
+    <!-- ④ P95 -->
+    <section class="card" id="s4">
+      <h2>④ 上游延迟实测（12 次采样，P95）</h2>
+      <div class="desc">PHASE1 裁决 4 第 5 条 · 供端到端预算校准；纯 CSS 条形，最长 131 ms 为满宽。</div>
+      <div class="bars">
+        <div class="barrow"><span class="lb"><code>/api/meta</code></span><span class="bartrack"><span class="barfill" style="width:18.3%"></span></span><span class="vl">24 ms</span></div>
+        <div class="barrow"><span class="lb"><code>/api/stats</code></span><span class="bartrack"><span class="barfill" style="width:6.9%"></span></span><span class="vl">9 ms</span></div>
+        <div class="barrow"><span class="lb"><code>/api/pick</code></span><span class="bartrack"><span class="barfill" style="width:28.2%"></span></span><span class="vl">37 ms</span></div>
+        <div class="barrow"><span class="lb"><code>/api/scan</code></span><span class="bartrack"><span class="barfill" style="width:11.5%"></span></span><span class="vl">15 ms</span></div>
+        <div class="barrow"><span class="lb"><code>/api/stock?days=420</code></span><span class="bartrack"><span class="barfill" style="width:46.6%"></span></span><span class="vl">61 ms</span></div>
+        <div class="barrow"><span class="lb"><code>/api/stock?days=999999</code></span><span class="bartrack"><span class="barfill warn" style="width:100%"></span></span><span class="vl">131 ms</span></div>
+        <div class="barrow"><span class="lb"><code>/api/signals?limit=600</code></span><span class="bartrack"><span class="barfill" style="width:20.6%"></span></span><span class="vl">27 ms</span></div>
+      </div>
+      <div class="hint" style="margin-top:10px">8 s 端到端预算充裕；F4 双口径需两次只读上游调用（<code>limit=60</code> / <code>limit=600</code>），建议并发或短 TTL 缓存，且全样本调用同样受 1 MB 上限。<code>days</code> 边界拦截放在<b>上游调用之前</b>，避免 449 KB 大响应。</div>
+    </section>
+
+    <!-- ⑤ 改造方案 -->
+    <section class="card" id="s5">
+      <h2>⑤ 改造方案摘要</h2>
+
+      <h3>实施序（按依赖拓扑，非 RICE 分数）</h3>
+      <div class="steps">
+        <span class="step">F6 · 统一信封 / 参数边界</span><span class="arrow">→</span>
+        <span class="step">F8 · disclaimer 全量注入</span><span class="arrow">→</span>
+        <span class="step">F2 · INVALID_CONDS 显式失败</span><span class="arrow">→</span>
+        <span class="step">F4 · 双口径并置</span><span class="arrow">→</span>
+        <span class="step">F3 · 缺失值 / ST 过滤</span>
+      </div>
+      <ul class="clean">
+        <li><b>F8 前置于 F2</b>：disclaimer 在 envelope 层统一注入，是含 F2 错误响应在内所有响应的前置依赖。</li>
+        <li><b>F2 优先于 F4</b>：F2 是使用者直接踩到的静默错误（P0 阻断），F4 是披露问题。</li>
+        <li>部署形态：挂 :8000 既有 Flask app 的 <b>Blueprint</b> + 离线 fixture 双通道；否决新增进程与 :8093。</li>
+        <li>验收：L1 离线确定性层（fixture 回放，不依赖内网）+ L2 在线契约层；三种负例反向对照判 FAIL。</li>
+      </ul>
+
+      <h3>两个被否决的范围方案</h3>
+      <div class="rejected"><b>方案 A · 直改 8094 服务端</b>：无源码、无写权限、越权。HTTP 未暴露源码，Filer 上只有本平台工程目录；改造落点只能是本平台侧的规整层。</div>
+      <div class="rejected"><b>方案 B · 升级为完整研究引擎</b>：超出「验证改造点」范围，触发范围膨胀。</div>
+
+      <h3>F1 分阶段裁决（裁决 1）</h3>
+      <div class="split">
+        <div>
+          <div class="fact"><div class="lbl">本期做（零额外实现）</div><div class="txt">只做<b>契约卫生</b>：我方契约<b>不声明</b> <code>preset</code> 参数（避免复制失真声明），所有响应统一回显 <code>applied_conds</code>。<b>不实现</b> 6 键 PRESETS 冻结常量映射，不写验收用例、不写代码。</div></div>
+        </div>
+        <div>
+          <div class="fact"><div class="lbl">后续触发条件</div><div class="txt">本期开放第三方按 OpenAPI 接入时，Reach 重估至 6，F1 升 Should 并补映射；在此之前保持 Could。理由：6 键是上游前端内联 JS 私有字典，复制后上游一改我方契约先失真，等于用新的契约失真修旧的；且主受害方 U3 不在本期 Reach（RICE 0.4）。</div></div>
+        </div>
+      </div>
+
+      <div class="boundary" style="margin-top:14px">
+        <b>再次明确边界：</b>本次改造<b>不改动 8094 服务端</b>；改造落点为<b>本地旁路规整层 + 确定性验收</b>，
+        交付形态 = 契约规整层原型 + 确定性验收校验 + 评估报告 + 接入本平台验收页。上游服务保持原样，本报告全部「改造后」描述均指本地规整层输出。
+      </div>
+    </section>
+
+    <!-- ⑥ 零 CDN 自检 -->
+    <section class="card" id="s6">
+      <h2>⑥ 零 CDN 与合规自检（页面内联脚本真实执行）</h2>
+      <div class="desc">下表由本页内联 JS 在浏览器内实时计算并填入，不依赖任何外部资源；离线双击本文件即可得到相同结果。</div>
+      <div class="tw"><table id="selfcheck">
+        <thead><tr><th>自检项</th><th>判据</th><th class="num">实测</th><th class="num">结果</th></tr></thead>
+        <tbody><tr><td colspan="4" class="hint">正在执行自检…（若长期停留在此行，说明内联脚本未运行，但上方全部正文内容仍可完整阅读）</td></tr></tbody>
+      </table></div>
+      <div class="hint" style="margin-top:10px">
+        自检覆盖：外部资源标签数、外部协议串数、内联脚本段数、置顶合规声明、指标指纹、8 类改造点卡片数。
+        <b>合规说明</b>：禁用的是操作导向的肯定式内容；「买卖点／目标价」仅以否定式出现在置顶与页脚合规声明中（声明不提供），
+        与项目 <code>deploy/deliver.py</code> 标准措辞一致，正文内容区不含此类措辞。
+      </div>
+    </section>
+
+  </main>
+
+  <footer data-compliance="foot" id="compliance-foot">
+    <b>合规声明（固定页脚）</b><br>
+    research-only／不构成投资建议／不荐股／不给买卖点与目标价／不承诺收益／不代操作。<br>
+    本报告为内网既有服务的<b>只读取证与工程契约评估</b>，全部数值为历史统计与观测事实，不含实盘下单、券商接口与自动交易循环；
+    本页出现的个股代码均为取证样例，属历史统计样例，非推荐。<br>
+    本次改造<b>不改动 8094 服务端</b>，上游服务保持原样；改造落点为本地旁路规整层 + 确定性验收。
+    指标指纹 <code>e819989972c994d1</code> · 证据 <code>output/terminal_8094_probe.json</code> · 32/32 PASS，反向对照 0/32。
+  </footer>
+</div>
+
+<script>
+/* 单段内联脚本：仅做自检与渐进增强，正文内容为静态 HTML，脚本不运行也能完整阅读 */
+(function(){
+  "use strict";
+
+  var EXPECT_FP = "e819989972c994d1";
+
+  function countExternalTags(){
+    var sel = "script[src],link[href],img[src],iframe[src],source[src],video[src],audio[src],embed[src],object[data]";
+    return document.querySelectorAll(sel).length;
+  }
+
+  function countExternalAttrs(){
+    var bad = 0;
+    var nodes = document.querySelectorAll("[src],[href]");
+    Array.prototype.forEach.call(nodes, function(el){
+      var attrs = ["src", "href"];
+      attrs.forEach(function(a){
+        var v = el.getAttribute(a) || "";
+        if (v.indexOf("//") === 0 || /^[a-z]+:\/\//i.test(v)) { bad += 1; }
+      });
+    });
+    return bad;
+  }
+
+  function countProtocolTokens(){
+    /* 用运行时拼接构造待检测串，避免检测串自身出现在源码中被计入 */
+    var a = "ht" + "tp://";
+    var b = "ht" + "tps://";
+    var all = document.documentElement.outerHTML || "";
+    return all.split(a).length - 1 + all.split(b).length - 1;
+  }
+
+  function hasTopDisclaimer(){
+    var n = document.getElementById("compliance-top");
+    if (!n) { return false; }
+    var t = n.textContent || "";
+    return t.indexOf("research-only") >= 0 && t.indexOf("不构成投资建议") >= 0;
+  }
+
+  function readFingerprint(){
+    var m = document.querySelector('meta[name="metric-fingerprint"]');
+    return m ? (m.getAttribute("content") || "") : "";
+  }
+
+  function countFindings(){
+    return document.querySelectorAll("[data-f]").length;
+  }
+
+  function buildRows(items){
+    return items.map(function(x){
+      var ok = x.pass;
+      return "<tr><td>" + x.name + "</td><td>" + x.rule + "</td>" +
+             '<td class="num">' + x.actual + '</td>' +
+             '<td class="num st ' + (ok ? "pass" : "fail") + '">' + (ok ? "PASS" : "FAIL") + "</td></tr>";
+    }).join("");
+  }
+
+  function run(){
+    var ext = countExternalTags();
+    var attrs = countExternalAttrs();
+    var proto = countProtocolTokens();
+    var scripts = document.querySelectorAll("script").length;
+    var disc = hasTopDisclaimer();
+    var fp = readFingerprint();
+    var nf = countFindings();
+
+    var items = [
+      { name: "外部资源标签", rule: "script[src] / link[href] / img[src] / iframe / object 等 = 0", actual: String(ext), pass: ext === 0 },
+      { name: "外部协议引用（src / href）", rule: "协议相对或带协议的绝对地址 = 0", actual: String(attrs), pass: attrs === 0 },
+      { name: "全文外部协议串", rule: "源码中出现次数 = 0", actual: String(proto), pass: proto === 0 },
+      { name: "内联脚本段数", rule: "= 1（单段自检脚本）", actual: String(scripts), pass: scripts === 1 },
+      { name: "置顶合规声明", rule: "含 research-only 与「不构成投资建议」", actual: disc ? "已置顶" : "缺失", pass: disc },
+      { name: "指标指纹 meta", rule: "= " + EXPECT_FP, actual: fp || "缺失", pass: fp === EXPECT_FP },
+      { name: "改造点卡片", rule: "F1 ~ F8 共 8 张", actual: String(nf) + " 张", pass: nf === 8 }
+    ];
+
+    var tb = document.querySelector("#selfcheck tbody");
+    if (tb) { tb.innerHTML = buildRows(items); }
+    var allPass = items.every(function(x){ return x.pass; });
+    document.documentElement.setAttribute("data-selfcheck", allPass ? "pass" : "fail");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else {
+    run();
+  }
+})();
+</script>
+</body>
+</html>

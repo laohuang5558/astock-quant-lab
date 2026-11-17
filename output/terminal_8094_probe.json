@@ -1,0 +1,489 @@
+{
+  "ok": true,
+  "passed": 32,
+  "total": 32,
+  "method": "read-only GET",
+  "base": "http://192.168.2.203:8094",
+  "target": "A股条件分析终端 :8094 (内网既有服务，非本平台部署)",
+  "probe_time": "2026-11-17T19:21:18+08:00",
+  "checks": [
+    {
+      "name": "正向 sanity：/api/meta 返回 200 且 n_stocks > 0",
+      "ok": true,
+      "detail": "status=200 n_stocks=5850"
+    },
+    {
+      "name": "404 反证：不存在路径返回 404",
+      "ok": true,
+      "detail": "status=404"
+    },
+    {
+      "name": "契约面：OpenAPI 3.1 且至少 8 个 API 路径",
+      "ok": true,
+      "detail": "status=200 paths=8"
+    },
+    {
+      "name": "契约面：/api/pick 声明了 preset 参数（用于后续取证）",
+      "ok": true,
+      "detail": "params=['conds', 'limit', 'market', 'preset', 'sort', 'topn']"
+    },
+    {
+      "name": "取证：200 响应 schema 为空对象（不可用于生成客户端/校验）",
+      "ok": true,
+      "detail": "count=8"
+    },
+    {
+      "name": "数据面：/api/stats 返回分组计数且 total 与 meta 一致",
+      "ok": true,
+      "detail": "total=5850"
+    },
+    {
+      "name": "取证 F1：不同 preset 与不带 preset 的返回首元素完全相同",
+      "ok": true,
+      "detail": "distinct=1"
+    },
+    {
+      "name": "取证 F2：无效/注入型 conds 全部 HTTP 200 且回退到默认选股结果",
+      "ok": true,
+      "detail": "n=5 all_default=True"
+    },
+    {
+      "name": "取证 F2b：有效 conds 与默认结果不同（证明 conds 通道本身可用）",
+      "ok": true,
+      "detail": "valid != default"
+    },
+    {
+      "name": "取证 F2c：有效项+无效项混排时，无效项被静默丢弃（结果等同只有有效项）",
+      "ok": true,
+      "detail": "mix==valid: True"
+    },
+    {
+      "name": "取证 F2d：逗号分隔 / AND 关键字不被支持，静默退化为默认结果",
+      "ok": true,
+      "detail": "comma_default=True and_default=True"
+    },
+    {
+      "name": "取证 F3：公式选股结果含指标为 null 的标的",
+      "ok": true,
+      "detail": "n=2 / 300"
+    },
+    {
+      "name": "取证 F3b：公式选股结果含 ST 标的",
+      "ok": true,
+      "detail": "n=10"
+    },
+    {
+      "name": "取证 F3c：G7（回踩+非死叉+窄幅）命中含 ST/无名标的",
+      "ok": true,
+      "detail": "n=2 / 26"
+    },
+    {
+      "name": "取证 F4：默认 limit 的 fwd60 胜率与全样本相差 > 0.2",
+      "ok": true,
+      "detail": "default=0.906 full=0.596 gap=0.3100"
+    },
+    {
+      "name": "取证 F4b：agg 的样本数 n 随前向周期递减（null 截断未披露）",
+      "ok": true,
+      "detail": "n5/20/60=59/58/53"
+    },
+    {
+      "name": "取证 F4c：信号响应无随机对照/样本外/基准/成本/多重检验字段",
+      "ok": true,
+      "detail": "present=[] response_keys=['agg', 'code', 'group', 'items', 'name', 'total']"
+    },
+    {
+      "name": "取证 F5：三个周期均可用 c[t+h]/o[t+1]-1 复算，最大误差 < 1e-4（4 位小数舍入）",
+      "ok": true,
+      "detail": "max_abs_err=0.00004996 ns=[413, 412, 407]"
+    },
+    {
+      "name": "取证 F5b：收盘到收盘口径误差显著更大，证明口径非它（避免误判为算错）",
+      "ok": true,
+      "detail": "min_close_to_close_mean_err=0.007021"
+    },
+    {
+      "name": "取证 F5c：单股日线被截断在 2000 根左右，早于 meta.universe_start",
+      "ok": true,
+      "detail": "len=2000 first=2018-08-16 universe_start=2015-06-01"
+    },
+    {
+      "name": "取证 F5d：OpenAPI 未披露前向收益口径（schema 为空、无字段说明）",
+      "ok": true,
+      "detail": "disclosed=False"
+    },
+    {
+      "name": "取证 F6：/health 无健康检查端点（404）",
+      "ok": true,
+      "detail": "status=404"
+    },
+    {
+      "name": "取证 F6：/api/health 无健康检查端点（404）",
+      "ok": true,
+      "detail": "status=404"
+    },
+    {
+      "name": "取证 F6b：days=-1 无边界校验仍返回 200",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "取证 F6c：days=999999 返回大响应体（无上限）",
+      "ok": true,
+      "detail": "bytes=449253"
+    },
+    {
+      "name": "取证 F6d：非法代码返回 FastAPI 原生 {detail} 而非统一信封",
+      "ok": true,
+      "detail": "status=400 body={'detail': '代码格式无法识别'}"
+    },
+    {
+      "name": "取证 F6e：/api/meta 响应无 request_id / 缓存 / 安全头",
+      "ok": true,
+      "detail": "missing=['cache-control', 'content-security-policy', 'x-content-type-options', 'x-request-id']"
+    },
+    {
+      "name": "取证 F7：/docs 与 /redoc 依赖外网 CDN（离线/内网隔离会白屏）",
+      "ok": true,
+      "detail": "cdn=['cdn.jsdelivr.net', 'fonts.googleapis.com']"
+    },
+    {
+      "name": "取证 F7b：主页面 ECharts 已本地托管（说明作者有零 CDN 意识）",
+      "ok": true,
+      "detail": "status=200 bytes=1030855"
+    },
+    {
+      "name": "取证 F8：首页含明确选股/胜率措辞",
+      "ok": true,
+      "detail": "{\"选股\": 7, \"运行\": 3, \"胜率\": 4, \"操盘\": 8}"
+    },
+    {
+      "name": "取证 F8b：首页无「不构成投资建议 / 免责 / research-only」声明",
+      "ok": true,
+      "detail": "has_only_caveat=True"
+    },
+    {
+      "name": "元断言：实际断言数与基线一致（防止增删断言后总数失配）",
+      "ok": true,
+      "detail": "before_meta=31 expected=31"
+    }
+  ],
+  "evidence": {
+    "meta_response": {
+      "meta": {
+        "latest_date": "2026-11-17",
+        "n_stocks": 5850,
+        "n_days": 11647813,
+        "name_hit": 5830,
+        "built_at": "2026-11-17 17:44:47",
+        "universe_start": "2015-06-01",
+        "n_monthly": 5850
+      },
+      "n_stocks": 5850
+    },
+    "openapi_paths": [
+      "/api/meta",
+      "/api/search",
+      "/api/stock/{code}",
+      "/api/scan",
+      "/api/pick",
+      "/api/stats",
+      "/api/signals/{code}",
+      "/"
+    ],
+    "pick_params": [
+      "conds",
+      "limit",
+      "market",
+      "preset",
+      "sort",
+      "topn"
+    ],
+    "empty_response_schemas": 8,
+    "stats": {
+      "G1": 576,
+      "G2": 464,
+      "G3": 112,
+      "G4": 160,
+      "G5": 169,
+      "G7": 26,
+      "G11": 115,
+      "total": 5850,
+      "dead_n": 4668,
+      "touch_n": 576,
+      "narrow_n": 1106
+    },
+    "preset_probe": {
+      "presets": [
+        "底部三绝",
+        "强势选股 牛3>99 牛4>99",
+        "临时选股 牛3>100 牛4>100"
+      ],
+      "first_items": [
+        "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}",
+        "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}",
+        "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+      ],
+      "default_first": "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+    },
+    "conds_probe": {
+      "invalid": [
+        {
+          "conds": "1/0",
+          "status": 200,
+          "first": "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+        },
+        {
+          "conds": "__import__('os').getcwd()",
+          "status": 200,
+          "first": "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+        },
+        {
+          "conds": "cci_w",
+          "status": 200,
+          "first": "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+        },
+        {
+          "conds": "",
+          "status": 200,
+          "first": "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+        },
+        {
+          "conds": "close>0 or 1==1",
+          "status": 200,
+          "first": "{\"adx\": null, \"amp_pct\": 0.001, \"bias6\": 0.0, \"cci14\": 0.0, \"cci_m\": -130.3, \"cci_m_chg\": 15.71, \"cci_sum\": -160.8, \"cci_w\": -30.5, \"close\": 0.38, \"code\": \"sz000851\", \"dist\": -0.1685, \"ma5w\": 0.38, \"market\": \"深市主板\", \"mdi\": null, \"name\": \"*ST高鸿\", \"pdi\": null}"
+        }
+      ],
+      "valid_first": "{\"adx\": 14.5, \"amp_pct\": 0.019, \"bias6\": 1.46, \"cci14\": 75.3, \"cci_m\": 34.1, \"cci_m_chg\": 0.24, \"cci_sum\": 170.9, \"cci_w\": 136.8, \"close\": 31.31, \"code\": \"sh600323\", \"dist\": 0.0373, \"ma5w\": 31.038, \"market\": \"沪市主板\", \"mdi\": 12.6, \"name\": \"瀚蓝环境\", \"pdi\": 16.3}"
+    },
+    "conds_silent_drop": {
+      "valid_plus_invalid": true,
+      "comma_separator": true,
+      "and_keyword": true
+    },
+    "pick_quality": {
+      "n": 300,
+      "null_metric_n": 2,
+      "st_n": 10,
+      "null_examples": [
+        {
+          "code": "sz000851",
+          "name": "*ST高鸿",
+          "market": "深市主板",
+          "close": 0.38,
+          "dist": -0.1685,
+          "amp_pct": 0.001,
+          "adx": null,
+          "pdi": null,
+          "mdi": null,
+          "bias6": 0.0,
+          "cci14": 0.0,
+          "cci_w": -30.5,
+          "cci_m": -130.3,
+          "cci_m_chg": 15.71,
+          "ma5w": 0.38,
+          "cci_sum": -160.8
+        },
+        {
+          "code": "sz000627",
+          "name": "*ST天茂",
+          "market": "深市主板",
+          "close": 1.58,
+          "dist": 0.0161,
+          "amp_pct": 0.002,
+          "adx": null,
+          "pdi": null,
+          "mdi": null,
+          "bias6": 0.0,
+          "cci14": null,
+          "cci_w": -11.0,
+          "cci_m": -87.0,
+          "cci_m_chg": 12.6,
+          "ma5w": 1.58,
+          "cci_sum": -98.0
+        }
+      ],
+      "st_examples": [
+        {
+          "code": "sz000851",
+          "name": "*ST高鸿",
+          "market": "深市主板",
+          "close": 0.38,
+          "dist": -0.1685,
+          "amp_pct": 0.001,
+          "adx": null,
+          "pdi": null,
+          "mdi": null,
+          "bias6": 0.0,
+          "cci14": 0.0,
+          "cci_w": -30.5,
+          "cci_m": -130.3,
+          "cci_m_chg": 15.71,
+          "ma5w": 0.38,
+          "cci_sum": -160.8
+        },
+        {
+          "code": "sz000627",
+          "name": "*ST天茂",
+          "market": "深市主板",
+          "close": 1.58,
+          "dist": 0.0161,
+          "amp_pct": 0.002,
+          "adx": null,
+          "pdi": null,
+          "mdi": null,
+          "bias6": 0.0,
+          "cci14": null,
+          "cci_w": -11.0,
+          "cci_m": -87.0,
+          "cci_m_chg": 12.6,
+          "ma5w": 1.58,
+          "cci_sum": -98.0
+        },
+        {
+          "code": "sz002932",
+          "name": "*ST明德",
+          "market": "深市主板",
+          "close": 14.3,
+          "dist": -0.0316,
+          "amp_pct": 0.015,
+          "adx": 22.1,
+          "pdi": 13.7,
+          "mdi": 25.9,
+          "bias6": -0.92,
+          "cci14": -50.6,
+          "cci_w": -96.4,
+          "cci_m": -85.5,
+          "cci_m_chg": 16.94,
+          "ma5w": 14.38,
+          "cci_sum": -181.8
+        }
+      ]
+    },
+    "g7_quality": {
+      "n": 26,
+      "st_or_unnamed": 2,
+      "examples": [
+        {
+          "code": "sz300326",
+          "name": "ST凯利",
+          "market": "创业板",
+          "close": 6.37,
+          "amp_pct": 0.213,
+          "dead": false,
+          "touch": true,
+          "dist": 0.0006
+        },
+        {
+          "code": "sz200570",
+          "name": "",
+          "market": "深市主板",
+          "close": 2.06,
+          "amp_pct": 0.282,
+          "dead": false,
+          "touch": true,
+          "dist": -0.0043
+        }
+      ]
+    },
+    "agg_probe": {
+      "limit_default": {
+        "items": 60,
+        "total": 515,
+        "agg": {
+          "fwd5": {
+            "n": 59,
+            "avg": 0.0089,
+            "win": 0.661
+          },
+          "fwd20": {
+            "n": 58,
+            "avg": 0.0815,
+            "win": 0.707
+          },
+          "fwd60": {
+            "n": 53,
+            "avg": 0.2132,
+            "win": 0.906
+          }
+        }
+      },
+      "limit_600": {
+        "items": 515,
+        "total": 515,
+        "agg": {
+          "fwd5": {
+            "n": 514,
+            "avg": 0.0017,
+            "win": 0.518
+          },
+          "fwd20": {
+            "n": 513,
+            "avg": 0.0188,
+            "win": 0.474
+          },
+          "fwd60": {
+            "n": 508,
+            "avg": 0.0551,
+            "win": 0.596
+          }
+        }
+      }
+    },
+    "agg_win_gap": 0.31,
+    "rigor_keys_present": [],
+    "fwd_recompute": {
+      "verified_formula": "fwd_h = close[t+h] / open[t+1] - 1",
+      "per_horizon": {
+        "5": {
+          "n": 413,
+          "t1_open_mean_abs_err": 2.335e-05,
+          "t1_open_max_abs_err": 4.952e-05,
+          "close_to_close_mean_abs_err": 0.007021
+        },
+        "20": {
+          "n": 412,
+          "t1_open_mean_abs_err": 2.505e-05,
+          "t1_open_max_abs_err": 4.996e-05,
+          "close_to_close_mean_abs_err": 0.007093
+        },
+        "60": {
+          "n": 407,
+          "t1_open_mean_abs_err": 2.51e-05,
+          "t1_open_max_abs_err": 4.995e-05,
+          "close_to_close_mean_abs_err": 0.007317
+        }
+      },
+      "daily_len": 2000,
+      "daily_first": "2018-08-16",
+      "daily_last": "2026-11-17",
+      "universe_start": "2015-06-01"
+    },
+    "fwd_disclosed_in_contract": false,
+    "missing_headers": [
+      "cache-control",
+      "content-security-policy",
+      "x-content-type-options",
+      "x-request-id"
+    ],
+    "docs_cdn": {
+      "docs": true,
+      "redoc_fonts": true
+    },
+    "compliance": {
+      "len": 41172,
+      "has_not_advice": false,
+      "has_disclaimer": false,
+      "has_risk": false,
+      "has_research_only": false,
+      "has_only_caveat": true,
+      "selection_words": {
+        "选股": 7,
+        "运行": 3,
+        "胜率": 4,
+        "操盘": 8
+      }
+    }
+  },
+  "note": "断言对象为观测事实；缺陷含义、优先级与改造方案见 docs/TERMINAL_8094_REVIEW.md。"
+}

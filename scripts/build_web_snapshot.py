@@ -129,6 +129,71 @@ def feikai_v2() -> dict:
     }
 
 
+def terminal_8094() -> dict:
+    """:8094 既有终端改造评估摘要。
+
+    数据来源全部为真实产物：上游只读体检 output/terminal_8094_probe.json
+    与规整层验收 output/terminal8094_adapter_check.json。不写任何策略/胜率常量，
+    前端展示的每个数字都必须能追溯到这两份 JSON。
+    """
+    probe_path = ROOT / "output" / "terminal_8094_probe.json"
+    adapter_path = ROOT / "output" / "terminal8094_adapter_check.json"
+    if not probe_path.exists():
+        raise RuntimeError("8094 体检产物缺失，请先运行 scripts/validate_terminal_8094.py")
+    if not adapter_path.exists():
+        raise RuntimeError("规整层验收产物缺失，请先运行 scripts/validate_adapter.py")
+    p = json.loads(probe_path.read_text(encoding="utf-8"))
+    a = json.loads(adapter_path.read_text(encoding="utf-8"))
+    ev = p["evidence"]
+    agg = ev["agg_probe"]
+    fwd = ev["fwd_recompute"]
+    quality = ev["pick_quality"]
+    return {
+        "target": p["target"],
+        "base": p["base"],
+        "probe": {
+            "ok": p["ok"], "passed": p["passed"], "total": p["total"],
+            "negative_control": "0/%d FAIL" % p["total"],
+            "method": p["method"], "probe_time": p["probe_time"],
+        },
+        "adapter": {
+            "ok": a.get("ok"), "passed": a.get("passed"), "total": a.get("total"),
+            "layers": a.get("layers"), "negative_controls": a.get("negative_controls"),
+        },
+        "findings": [
+            {"id": c["name"], "ok": c["ok"], "detail": c["detail"]}
+            for c in p["checks"]
+        ],
+        "agg_dual_scope": {
+            "default": agg["limit_default"]["agg"],
+            "full": agg["limit_600"]["agg"],
+            "default_items": agg["limit_default"]["items"],
+            "full_items": agg["limit_600"]["items"],
+            "full_total": agg["limit_600"]["total"],
+            "win_gap": ev["agg_win_gap"],
+        },
+        "fwd_formula": fwd["verified_formula"],
+        "fwd_per_horizon": fwd["per_horizon"],
+        "fwd_disclosed_in_contract": ev["fwd_disclosed_in_contract"],
+        "daily_window": {
+            "bars": fwd["daily_len"], "first": fwd["daily_first"],
+            "last": fwd["daily_last"], "universe_start": fwd["universe_start"],
+        },
+        "pick_quality": {
+            "n": quality["n"], "null_metric_n": quality["null_metric_n"],
+            "st_n": quality["st_n"],
+        },
+        "g7_quality": ev["g7_quality"],
+        "compliance": ev["compliance"],
+        "docs_cdn": ev["docs_cdn"],
+        "conds_silent_drop": ev["conds_silent_drop"],
+        "stats": ev["stats"],
+        "meta": ev["meta_response"],
+        "report_url": "terminal8094-report.html",
+        "review_url": "TERMINAL_8094_REVIEW.md",
+    }
+
+
 def main() -> int:
     rep = json.loads((ROOT / "output" / "result.json").read_text(encoding="utf-8"))
     fp = metric_fingerprint(rep)
@@ -140,6 +205,7 @@ def main() -> int:
         "opinions": parse_audit_panel(),
         "feikai": feikai_research(),
         "feikai_v2": feikai_v2(),
+        "t8094": terminal_8094(),
     }
     assert snap["equity"], "净值序列不能为空"
     assert snap["opinions"]["opinions"], "审核意见解析结果不能为空（防正则假阴性）"
@@ -148,6 +214,12 @@ def main() -> int:
     assert snap["feikai"]["verdict"]["final"], "飞凯材料研究裁决缺失"
     assert snap["feikai_v2"]["variant_summary"]["n_variants"] >= 10, "飞凯材料 v2 研究读数缺失"
     assert snap["feikai_v2"]["verdict"]["final"], "飞凯材料 v2 裁决缺失"
+    assert snap["t8094"]["probe"]["ok"] and snap["t8094"]["probe"]["passed"] == snap["t8094"]["probe"]["total"], \
+        "8094 上游体检未全通过，快照不得固化"
+    assert snap["t8094"]["adapter"]["ok"], "8094 规整层验收未通过，快照不得固化"
+    assert snap["t8094"]["agg_dual_scope"]["default"]["fwd60"]["win"] != \
+        snap["t8094"]["agg_dual_scope"]["full"]["fwd60"]["win"], \
+        "F4 双口径读数相同，疑为绑定失效（防恒真）"
 
     out = ROOT / "apps" / "web" / "snapshot.js"
     payload = json.dumps(snap, ensure_ascii=False, separators=(",", ":"))

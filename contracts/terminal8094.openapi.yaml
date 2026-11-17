@@ -1,0 +1,849 @@
+openapi: 3.1.0
+info:
+  title: 内网既有 A股条件分析终端(:8094) 旁路规整层 API
+  version: 1.0.0-phase2
+  summary: 只读 GET 契约规整层；挂在本平台 :8000 既有 Flask app 的 Blueprint 上
+  description: |
+    ## 定位与边界
+    本契约描述的是**本平台侧旁路规整层**，不是上游「A股条件分析终端 v0.1.0」的服务端契约。
+    上游是内网既有服务（http://192.168.2.203:8094），本平台无其源码、无写权限；
+    规整层全程 **只读 GET**，0 写入上游、0 触发 LLM 任务、不改写上游选股结果。
+
+    ## research-only（F8）
+    所有响应（成功 / 参数错误 / conds 校验失败 / 上游降级）**100% 携带 disclaimer**，
+    含 `research_only: true` 与「不构成投资建议」文案；上游降级时额外标注
+    「非实时·缓存/样例」。不荐股、不给买卖点与目标价、不承诺收益、不代操作。
+    `strategy_verdict` 恒为 `not_approved`。
+
+    ## F1 分阶段裁决：刻意不声明 preset
+    上游 OpenAPI 为 `/api/pick` 声明了 `preset`，实测传入 6 个预设与不传参数返回首元素
+    完全相同（前端把 PRESETS 字符串填进 conds 提交，后端不消费 preset）。
+    **本契约刻意不声明 `preset` 参数，规整层也不透传它**，避免复制上游的失真声明。
+    所有响应统一回显 `applied_conds`。6 键 PRESETS 冻结常量映射从本期移出，
+    待「本期开放第三方按 OpenAPI 接入」触发条件满足后再补。
+
+    ## F2 显式失败（最高优先级）
+    上游按分号逐条解析 `conds`，无效项**静默丢弃**、全部无效时无声回退默认选股清单。
+    本规整层改为**白名单显式失败**：任一表达式非法即 `ok=false` +
+    `error.code=INVALID_CONDS` + `data=null`，不返回任何个股代码、不夹带上游选股清单、
+    不调用上游。错误体单一事实来源 `error.code`，**无顶层 `error_code` 别名**。
+
+    ## 参数边界（F6）
+    `days` 1..2000、`limit` 1..800，越界在**调用上游之前**拦截并返回 400，
+    避免 `days=999999` 的 449KB 大响应；`limit=999999` 绝不透传。
+    上游单次只读 GET 超时 6s，响应体 >1MB 直接拒；任何上游异常统一严格降级
+    （`ok=false` + `data=null` + `degraded=true` + `provenance.stale=true`），
+    **绝不返回样例选股结果、绝不半包**。
+
+    ## F3 / F4 / F5
+    - F3：`metric_null / st / unnamed / suspended` 四类标的被剔除，`filter_rules` 为枚举子集。
+    - F4：`/signals/{code}` 双口径并置（两次只读调用 limit=60 与 limit=600），
+      各带 `sample_n / window / limit / truncation_rule / strategy_verdict` +
+      `caveat` 确定性枚举；**不对上游胜率数值做相等判定**，不强制全样本展示。
+    - F5：显式补披露 `fwd_formula = close[t+h] / open[t+1] - 1`
+      （全样本反推 5/20/60 三周期最大绝对误差 4.996e-05），以及
+      `daily_window_truncated=true` / `daily_bars=2000` / `daily_first=2018-08-16` /
+      `universe_start=2015-06-01`。这是**补披露**，不是标 UNVERIFIABLE、不改算法。
+
+    ## 指纹双对象
+    `metric_fingerprint` 是既有 `envelope()` 的**恒量继承**，禁止拿它做可复跑相等断言；
+    可复跑相等断言改用 `provenance.payload_fingerprint`（sha256 +
+    `json.dumps(sort_keys=True, ensure_ascii=False)`，排除
+    `server_time / request_id / metric_fingerprint`；F4 五字段、caveat 枚举、
+    双口径对象与 F5 披露全部纳入 payload）。
+
+    ## 继承能力（不计入本期验收）
+    统一信封 `ok/data/request_id/server_time/metric_fingerprint`、幂等键、
+    `/quant/api/v1/health`、安全响应头均由既有 :8000 app 零边际成本继承；
+    本规整层**不新增** `/health` 端点、不新增进程、不新增生命周期。
+    挂载证明：GET 本前缀下任一只读端点 → 200 且信封最小集齐全。
+  license:
+    name: research-only
+  contact:
+    name: fullstack-architects-team-lead
+
+servers:
+  - url: http://127.0.0.1:8000/quant/api/v1/terminal8094
+    description: 本地开发（:8000 既有 Flask app 内 Blueprint）
+  - url: http://192.168.2.203/quant/api/v1/terminal8094
+    description: 内网 ai-server nginx 反向代理
+
+tags:
+  - name: system
+    description: 挂载探针与上游元信息（只读）
+  - name: selection
+    description: 条件选股与分组扫描（只读，F2/F3 规整）
+  - name: signals
+    description: 单只标的信号回看（只读，F4 双口径 + F5 补披露）
+
+x-decisions:
+  - id: F1
+    decision: 分阶段；本期只做契约卫生，不声明 preset、不实现 6 键 PRESETS 映射
+  - id: F2
+    decision: 优先于 F4；无效 conds 显式失败，不静默回退
+  - id: F3
+    decision: ST 默认排除 + 开关；filter_rules 为四类枚举子集
+  - id: F4
+    decision: 不强制全样本展示；双口径并置，不对上游胜率数值做相等判定
+  - id: F5
+    decision: 补披露 fwd 口径与日线截断，不标 UNVERIFIABLE、不改算法
+  - id: deployment
+    decision: 挂 :8000 既有 Flask app 的 Blueprint；否决 :8093 与新增进程
+
+paths:
+  /meta:
+    get:
+      tags: [system]
+      summary: 挂载探针 + 透传上游 /api/meta
+      operationId: getTerminal8094Meta
+      description: |
+        只读透传上游 `/api/meta`，并在 `data.mounted` / `data.api_prefix` 回显挂载事实。
+        作为 L2 在线「Blueprint 已挂载」判据使用（200 + 信封最小集齐全）。
+        **不是** `/health`；本规整层不新增健康检查端点。
+        上游不可达时按统一严格降级处理（不返回样例、不返回半包）。
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamDegraded'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
+  /pick:
+    get:
+      tags: [selection]
+      summary: 条件选股（conds 白名单显式失败 + F3 标的过滤）
+      operationId: pickTerminal8094
+      description: |
+        F2：`conds` 用白名单解析，分隔符 `;`，运算符 `> >= < <= == !=`，
+        合法字段集合为实测 24 个（adx pdi mdi bias6 cci14 cci_w cci_m cci_m_chg
+        ma5w close amp_pct low dist dead narrow wide ops_up swl sws light ma34 ma10w），
+        数值必须是合法十进制（含负号）。任一表达式非法 → 400 `INVALID_CONDS`、
+        `data=null`、不调用上游、不含任何个股代码。
+        合法时统一回显 `applied_conds`。未提交 `conds` 时上游按其默认公式选股，
+        并在 `data.default_formula_warning` 明示（本期不实现 PRESETS 映射）。
+        F3：结果剔除 metric_null / st / unnamed / suspended 标的，保留条目数值不改写。
+        **本端点不声明、不接受、不透传 `preset`。**
+      parameters:
+        - $ref: '#/components/parameters/Conds'
+        - $ref: '#/components/parameters/Group'
+        - $ref: '#/components/parameters/Days'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamDegraded'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
+  /scan:
+    get:
+      tags: [selection]
+      summary: 分组扫描（G1/G2/G3/G4/G5/G7/G11，只读）
+      operationId: scanTerminal8094
+      description: |
+        透传上游 `/api/scan?group=...`；同样执行 F2 conds 白名单、F6 参数前置边界
+        与 F3 标的过滤（实测 G7 命中含 ST / 名称为空的 B 股）。
+        **本端点不声明、不接受、不透传 `preset`。**
+      parameters:
+        - $ref: '#/components/parameters/Group'
+        - $ref: '#/components/parameters/Conds'
+        - $ref: '#/components/parameters/Days'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamDegraded'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
+  /signals/{code}:
+    get:
+      tags: [signals]
+      summary: 单只标的信号回看（F4 双口径并置 + F5 补披露）
+      operationId: getTerminal8094Signals
+      description: |
+        F4：固定发出**两次只读上游调用** `/api/signals/{code}?limit=60` 与
+        `...&limit=600`（串行 + 首次失败即短路，最坏 6s < 8s 端到端预算）。
+        **任一失败即整单严格降级，绝不半包**。双口径对象各带
+        `sample_n / window / limit / truncation_rule / strategy_verdict` + `caveat`
+        确定性枚举；`strategy_verdict` 恒 `not_approved`；**不对上游胜率数值做相等判定**。
+        调用方传入的 `limit` 仍受 1..800 边界校验（越界在调用上游前 400），
+        但**不透传**：双口径 limit 固定为 60 / 600，见 `provenance.scope_limits_fixed`。
+        F5：显式补披露 `fwd_formula = close[t+h] / open[t+1] - 1` 及日线硬截断事实；
+        属补披露，不标 UNVERIFIABLE。
+        非法代码返回统一 `error.code=INVALID_ARGUMENT`，**不产生上游 FastAPI 原生 `{detail}` 体**。
+        L1 离线 fixture 注意：`limit=60` 是 `limit=600` 的子串，请用
+        `apps.api.terminal8094.dual_scope_paths(code, group)` 取得两次调用的精确路径构造映射，
+        或优先判断 `endswith("limit=600")`，不要用裸 `"limit=60" in path` 造成口径误判。
+        data 顶层平铺 F5 披露八字段（见 `FwdDisclosureFields`），并另含 `scopes`
+        （ScopesPair）、`fwd_return_disclosure`（FwdDisclosure）、`dual_scope_calls`。
+      parameters:
+        - $ref: '#/components/parameters/Code'
+        - $ref: '#/components/parameters/Group'
+        - $ref: '#/components/parameters/Conds'
+        - $ref: '#/components/parameters/Days'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamDegraded'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
+  /stats:
+    get:
+      tags: [selection]
+      summary: 分组计数（上游 /api/stats 只读透传）
+      operationId: getTerminal8094Stats
+      description: |
+        只读透传上游 `/api/stats`。`data.stats` 为上游分组计数原样透传，
+        `data.scope_note` 明示口径：**G* 分组计数是当日全市场横截面命中只数，
+        与 `/signals/{code}` 的单股历史时序 total 属不同维度，禁止相等判定**。
+        同样执行 F2 conds 白名单（非法即 400，不静默丢弃）、F6 参数前置边界与统一严格降级。
+        **本端点不声明、不接受、不透传 `preset`。**
+      parameters:
+        - $ref: '#/components/parameters/Group'
+        - $ref: '#/components/parameters/Conds'
+        - $ref: '#/components/parameters/Days'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamDegraded'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
+  /stock/{code}:
+    get:
+      tags: [signals]
+      summary: 单只标的日线只读透传（F5 口径披露 + days 前置边界）
+      operationId: getTerminal8094Stock
+      description: |
+        只读透传上游 `/api/stock/{code}`：`data.stock` 为上游响应原样透传（object 或 array）。
+        `days` 走 1..2000 前置边界：**`days=999999` 在调用上游之前即 400、上游零调用**，
+        避免 449KB 大响应，也避免「路由不存在 → 404」冒充 4xx 的假通过。
+        code 格式非法返回统一 `INVALID_ARGUMENT`（400）。
+        F5：`data` 顶层平铺八字段（见 `FwdDisclosureFields`）并置
+        `truncated=true`，明示日线硬截断与前瞻收益口径；属补披露，不标 UNVERIFIABLE。
+        上游不可达 / 契约不符统一严格降级，绝不半包。
+        **本端点不声明、不接受、不透传 `preset`。**
+      parameters:
+        - $ref: '#/components/parameters/Code'
+        - $ref: '#/components/parameters/Days'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Group'
+        - $ref: '#/components/parameters/Conds'
+      responses:
+        '200':
+          $ref: '#/components/responses/Ok'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/UpstreamDegraded'
+        '504':
+          $ref: '#/components/responses/UpstreamTimeout'
+
+components:
+  parameters:
+    Conds:
+      name: conds
+      in: query
+      required: false
+      description: |
+        条件表达式串。分隔符 `;`；单条语法 `字段 运算符 十进制数值`；
+        运算符 > >= < <= == !=；字段必须属于实测白名单 24 个
+        （adx pdi mdi bias6 cci14 cci_w cci_m cci_m_chg ma5w close amp_pct low
+        dist dead narrow wide ops_up swl sws light ma34 ma10w）；数值可带负号。
+        逗号分隔、`AND` 关键字、括号、裸标识符、注入型字符串、未知字段一律判非法
+        → 400 INVALID_CONDS（**显式失败，不静默丢弃、不回退默认选股**）。
+        注意：本契约不声明 `preset`；预设由调用方自行拼成 conds 字符串提交。
+      schema:
+        type: string
+        examples:
+          - 'cci_w>99'
+          - 'cci_w>99;cci_m>-130'
+      example: 'cci_w>99'
+    Group:
+      name: group
+      in: query
+      required: false
+      description: 上游分组编号，格式 G1..G11（实测 G1/G2/G3/G4/G5/G7/G11）
+      schema:
+        type: string
+        pattern: '^G[0-9]{1,2}$'
+        examples: [G1, G7]
+    Days:
+      name: days
+      in: query
+      required: false
+      description: |
+        日线窗口。**必须 1..2000**；越界在调用上游之前返回 400 INVALID_ARGUMENT，
+        避免 `days=999999` 产生 449KB 大响应。上游单股日线实测硬截断 2000 根。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2000
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: |
+        结果条数上限。**必须 1..800**；越界在调用上游之前返回 400（`limit=999999` 不透传）。
+        `/signals/{code}` 例外：本参数只做边界校验、不透传，双口径固定 60 / 600。
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 800
+    Code:
+      name: code
+      in: path
+      required: true
+      description: 证券代码，格式 sh/sz/bj + 6 位数字
+      schema:
+        type: string
+        pattern: '^(sh|sz|bj)[0-9]{6}$'
+        examples: [sz300398, sh600323]
+
+  responses:
+    Ok:
+      description: 成功（信封最小集 + disclaimer + applied_conds + provenance 齐全）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    BadRequest:
+      description: 参数越界 / conds 白名单失败 / 代码格式非法（400）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+          examples:
+            invalidConds:
+              summary: F2 无效 conds 显式失败（data=null，无任何个股代码）
+              value:
+                ok: false
+                data: null
+                request_id: a1b2c3d4e5f60718
+                server_time: '2026-11-17T18:20:13'
+                metric_fingerprint: e819989972c994d1
+                error:
+                  code: INVALID_CONDS
+                  message: 'conds 校验失败（显式失败，不回退默认选股）：第 1 条表达式不符合白名单语法'
+                disclaimer:
+                  research_only: true
+                  not_investment_advice: true
+                  text: '本接口数据仅供量化研究与工程复跑对照，不构成投资建议。'
+                applied_conds: []
+                strategy_verdict: not_approved
+                caveat: [no_cost_model, no_oos, no_multiple_testing_correction, conditional_survival_sample]
+                provenance:
+                  stale: false
+                  payload_fingerprint: 0000000000000000000000000000000000000000000000000000000000000000
+            invalidArgument:
+              summary: F6 参数越界（上游未被调用）
+              value:
+                ok: false
+                data: null
+                error:
+                  code: INVALID_ARGUMENT
+                  message: 'days=999999 越界，允许 1..2000；边界在调用上游之前拦截'
+                disclaimer:
+                  research_only: true
+                  text: '不构成投资建议'
+                applied_conds: []
+                strategy_verdict: not_approved
+                provenance:
+                  stale: false
+                  payload_fingerprint: 0000000000000000000000000000000000000000000000000000000000000000
+    UpstreamDegraded:
+      description: |
+        上游不可用 / 响应 >1MB / 契约不符（502）。严格降级：
+        `ok=false` + `data=null` + `degraded=true` + `provenance.stale=true`
+        + disclaimer 含「非实时·缓存/样例」；不返回样例选股结果、不返回半包。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    UpstreamTimeout:
+      description: |
+        上游 6s 超时（504）。同为严格降级，`error.detail_code=UPSTREAM_TIMEOUT`，
+        `degraded=true`，不返回半包。
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+
+  schemas:
+    Envelope:
+      type: object
+      description: |
+        复用本平台既有 `envelope()` 信封（ok/data/request_id/server_time/metric_fingerprint），
+        并由规整层统一扩展 disclaimer / applied_conds / degraded / provenance /
+        strategy_verdict / caveat。**全量响应 100% 覆盖**，含错误与降级。
+      required: [ok, data, request_id, server_time, metric_fingerprint, disclaimer, applied_conds, discarded, discarded_conds, provenance]
+      properties:
+        ok:
+          type: boolean
+          description: 失败或降级恒为 false
+        data:
+          description: |
+            端点特定载荷。**参数错误 / conds 校验失败 / 上游降级时恒为 null**；
+            conds 失败时 data 中不含任何个股代码、不夹带上游选股清单。
+          type: [object, 'null']
+        request_id:
+          type: string
+          description: 既有 envelope 生成，每次请求变化；可复跑断言排除该字段
+        server_time:
+          type: string
+          format: date-time
+          description: 既有 envelope 生成；可复跑断言排除该字段
+        metric_fingerprint:
+          type: string
+          description: |
+            既有 envelope 的**恒量继承**（如 e819989972c994d1）。
+            禁止用它做可复跑相等断言；改用 provenance.payload_fingerprint。
+        error:
+          oneOf:
+            - $ref: '#/components/schemas/Error'
+            - type: 'null'
+          description: 成功时该字段不存在；**无顶层 error_code 别名**
+        disclaimer:
+          $ref: '#/components/schemas/Disclaimer'
+        applied_conds:
+          $ref: '#/components/schemas/AppliedConds'
+        discarded:
+          $ref: '#/components/schemas/DiscardedConds'
+        discarded_conds:
+          $ref: '#/components/schemas/DiscardedConds'
+        degraded:
+          type: boolean
+          description: 仅上游严格降级时为 true
+          default: false
+        strategy_verdict:
+          type: string
+          enum: [not_approved]
+          description: 恒为 not_approved（不放行策略级结论）
+        caveat:
+          $ref: '#/components/schemas/CaveatArray'
+        provenance:
+          $ref: '#/components/schemas/Provenance'
+      additionalProperties: false
+
+    Error:
+      type: object
+      description: 单一事实来源 error.code；不加顶层 error_code 别名
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_ARGUMENT
+            - INVALID_CONDS
+            - UPSTREAM_UNAVAILABLE
+            - UPSTREAM_TIMEOUT
+            - UPSTREAM_CONTRACT_MISMATCH
+            - NOT_FOUND
+          description: |
+            INVALID_ARGUMENT=参数越界/代码格式非法(400)；
+            INVALID_CONDS=conds 白名单失败(400)；
+            UPSTREAM_UNAVAILABLE=上游不可用统一降级主码(502)；
+            UPSTREAM_TIMEOUT=上游超时(504，放 detail_code 并驱动 HTTP 状态)；
+            UPSTREAM_CONTRACT_MISMATCH=>1MB / 非 JSON / 结构不符 / 半包(502)；
+            NOT_FOUND=资源不存在(404)。
+        message:
+          type: string
+        detail_code:
+          type: string
+          enum: [UPSTREAM_UNAVAILABLE, UPSTREAM_TIMEOUT, UPSTREAM_CONTRACT_MISMATCH]
+          description: 降级时的具体上游错误码（补充码），驱动 HTTP 502/504
+        family:
+          type: string
+          enum: [UPSTREAM_UNAVAILABLE]
+        http_hint:
+          type: integer
+          enum: [502, 504]
+
+    Disclaimer:
+      type: object
+      description: F8 全量覆盖；成功 / 错误 / 降级响应必带
+      required: [research_only, text]
+      properties:
+        research_only:
+          type: boolean
+          enum: [true]
+        not_investment_advice:
+          type: boolean
+          enum: [true]
+        text:
+          type: string
+          description: 含「不构成投资建议」；降级时额外含「非实时·缓存/样例」
+          examples:
+            - '本接口数据仅供量化研究与工程复跑对照，不构成投资建议；不荐股、不承诺收益。'
+        stale:
+          type: boolean
+          description: 降级时为 true
+        no_realtime_data:
+          type: boolean
+        no_sample_picks:
+          type: boolean
+        upstream_note:
+          type: string
+
+    AppliedConds:
+      type: array
+      description: |
+        统一回显字段名。实际被规整层接受并透传上游的条件表达式原文列表；
+        未提交 conds 或校验失败时为 []。失败时绝不含任何个股代码。
+      items:
+        type: string
+      examples:
+        - ['cci_w>99']
+        - []
+
+    DiscardedConds:
+      type: array
+      description: |
+        F2 显式反馈：被白名单判为非法而**逐条丢弃**的 conds 表达式原文列表。
+        与 `applied_conds` 成对出现，是同一事实的两面：
+        - 成功 / 未提交 conds：`[]`（恒空数组）；
+        - conds 校验失败（`INVALID_CONDS`）：逐条列出被丢弃的非法表达式原文。
+        `discarded` 与 `discarded_conds` 为同义字段、值始终相等（_seal 双写），
+        便于不同调用方按命名习惯读取；失败时不含任何个股代码。
+      items:
+        type: string
+      examples:
+        - []
+        - ['cci_w>99,and', 'ADX>50', 'foo(1)']
+
+    CaveatArray:
+      type: array
+      description: F4 确定性枚举数组（顺序固定），不对上游胜率数值做相等判定
+      minItems: 4
+      maxItems: 4
+      items:
+        type: string
+        enum: [no_cost_model, no_oos, no_multiple_testing_correction, conditional_survival_sample]
+      examples:
+        - [no_cost_model, no_oos, no_multiple_testing_correction, conditional_survival_sample]
+
+    Provenance:
+      type: object
+      required: [stale, payload_fingerprint, source, mode]
+      properties:
+        source:
+          type: string
+          enum: [terminal8094-adapter]
+        mode:
+          type: string
+          enum: [read_only_get]
+        stale:
+          type: boolean
+          description: 上游降级时为 true
+        payload_fingerprint:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+          description: |
+            sha256 + json.dumps(sort_keys=True, ensure_ascii=False)；
+            排除 server_time / request_id / metric_fingerprint；
+            F4 五字段、caveat 枚举、双口径对象与 F5 披露均纳入 payload。
+        upstream_base:
+          type: string
+          examples: ['http://192.168.2.203:8094']
+        upstream_path:
+          description: 本次只读 GET 的上游路径（signals 为两次调用的路径数组）
+          oneOf:
+            - type: string
+            - type: array
+              items: { type: string }
+        upstream_error_code:
+          type: string
+          enum: [UPSTREAM_UNAVAILABLE, UPSTREAM_TIMEOUT, UPSTREAM_CONTRACT_MISMATCH]
+        upstream_error_type:
+          type: string
+        no_sample_picks:
+          type: boolean
+          description: 降级时 true，绝不返回样例选股结果
+        no_partial_payload:
+          type: boolean
+          description: 降级时 true，绝不半包
+        upstream_writes:
+          type: integer
+          enum: [0]
+          description: 恒为 0（只读 GET，不触发 LLM 任务）
+        research_only:
+          type: boolean
+          enum: [true]
+        api_prefix:
+          type: string
+          examples: ['/quant/api/v1/terminal8094']
+        scope_limits_fixed:
+          type: array
+          items: { type: integer }
+          examples: [[60, 600]]
+        mount_probe:
+          type: boolean
+        preset_forwarded:
+          type: boolean
+          enum: [false]
+        fingerprint_excluded:
+          type: array
+          items: { type: string }
+        additionalProperties: true
+
+    FilterRules:
+      type: array
+      description: F3 实际命中的剔除规则，必须是四类枚举的子集
+      items:
+        type: string
+        enum: [metric_null, st, unnamed, suspended]
+      examples:
+        - [st, metric_null]
+
+    Scope:
+      type: object
+      description: F4 双口径中的单个口径
+      required: [sample_n, window, limit, truncation_rule, strategy_verdict, caveat]
+      properties:
+        scope:
+          type: string
+          enum: [default, full]
+        sample_n:
+          type: integer
+          description: 默认口径 60；全样本口径 515（上游 total）
+        window:
+          type: string
+          examples: [recent_60, full_sample]
+        limit:
+          type: integer
+          enum: [60, 600]
+        truncation_rule:
+          type: string
+          enum: [recent_window_truncated, forward_bars_insufficient_null_excluded]
+        strategy_verdict:
+          type: string
+          enum: [not_approved]
+        caveat:
+          $ref: '#/components/schemas/CaveatArray'
+        caveat_text:
+          type: string
+          examples: ['未计成本模型·无样本外拆分·无多重检验校正·有条件存活样本']
+        total_n:
+          type: integer
+        upstream_agg_passthrough:
+          type: object
+          description: 上游 agg 原样透传；**不做相等判定、不据此下策略结论**
+        numeric_equality_checked:
+          type: boolean
+          enum: [false]
+
+    ScopesPair:
+      type: object
+      description: 双口径并置对象（不对上游胜率数值做相等判定）
+      required: [default, full, strategy_verdict, caveat]
+      properties:
+        default:
+          $ref: '#/components/schemas/Scope'
+        full:
+          $ref: '#/components/schemas/Scope'
+        strategy_verdict:
+          type: string
+          enum: [not_approved]
+        caveat:
+          $ref: '#/components/schemas/CaveatArray'
+        caveat_text:
+          type: string
+        compare_policy:
+          type: string
+          enum: [dual_scope_side_by_side_only]
+        numeric_equality_checked:
+          type: boolean
+          enum: [false]
+        forced_full_sample_display:
+          type: boolean
+          enum: [false]
+
+    FwdDisclosure:
+      type: object
+      description: |
+        F5 补披露（不是 UNVERIFIABLE，不改算法）。八字段完整集合见同义平铺对象
+        `FwdDisclosureFields`；本对象为 signals 响应 `data.fwd_return_disclosure` 的形态。
+      required: [fwd_formula, price_basis, fwd_sample_n, history_window,
+                 universe_start_mismatch, daily_window_truncated, daily_bars,
+                 daily_first, universe_start]
+      properties:
+        fwd_formula:
+          type: string
+          enum: ['close[t+h] / open[t+1] - 1']
+          description: 前瞻收益口径，全样本反推 5/20/60 周期最大绝对误差 4.996e-05
+        price_basis:
+          type: string
+          enum: ['T+1 open']
+          description: 建仓价基准——信号次日(T+1)开盘价
+        fwd_sample_n:
+          type: object
+          description: 各前瞻周期实际可用样本数（尾部前瞻 bars 不足者被剔除）
+          additionalProperties: { type: integer }
+          examples:
+            - {'5': 413, '20': 412, '60': 407}
+        history_window:
+          type: string
+          description: 历史窗口说明（日线根数 + 首根日期）
+          examples: ['2000 根（首根 2018-08-16）']
+        universe_start_mismatch:
+          type: boolean
+          enum: [true]
+          description: |
+            日线首根(2018-08-16)晚于标的池起点 universe_start(2015-06-01)，
+            两者不一致——显式披露，不推断、不改算法
+        daily_window_truncated:
+          type: boolean
+          enum: [true]
+          description: 上游单股日线被硬截断为真
+        daily_bars:
+          type: integer
+          enum: [2000]
+        daily_first:
+          type: string
+          enum: ['2018-08-16']
+        universe_start:
+          type: string
+          enum: ['2015-06-01']
+        disclosure_kind:
+          type: string
+          enum: [supplemental_disclosure]
+        not_unverifiable:
+          type: boolean
+          enum: [true]
+        verification:
+          type: object
+          properties:
+            method:
+              type: string
+              enum: [full_sample_reverse_inference]
+            horizons:
+              type: array
+              items: { type: integer }
+              examples: [[5, 20, 60]]
+            max_abs_error:
+              type: number
+              examples: [0.00004996]
+        caveat:
+          type: string
+          description: 复权/除权处理上游未披露，本层不推断、不改算法
+
+    FwdDisclosureFields:
+      type: object
+      description: |
+        F5 八字段平铺对象——`/signals/{code}` 与 `/stock/{code}` 在 `data` 顶层
+        各平铺一份，便于调用方做确定性字段断言（与 `FwdDisclosure` 同值、两种形态）。
+      required: [fwd_formula, price_basis, fwd_sample_n, history_window,
+                 universe_start_mismatch, daily_window_truncated, daily_first,
+                 universe_start]
+      properties:
+        fwd_formula:
+          type: string
+          enum: ['close[t+h] / open[t+1] - 1']
+        price_basis:
+          type: string
+          enum: ['T+1 open']
+        fwd_sample_n:
+          type: object
+          additionalProperties: { type: integer }
+          examples:
+            - {'5': 413, '20': 412, '60': 407}
+        history_window:
+          type: string
+          examples: ['2000 根（首根 2018-08-16）']
+        universe_start_mismatch:
+          type: boolean
+          enum: [true]
+        daily_window_truncated:
+          type: boolean
+          enum: [true]
+        daily_first:
+          type: string
+          enum: ['2018-08-16']
+        universe_start:
+          type: string
+          enum: ['2015-06-01']
+
+    StatsData:
+      type: object
+      description: '`/stats` 成功载荷——上游分组计数原样透传 + 口径提示'
+      required: [stats, scope_note, applied_conds]
+      properties:
+        stats:
+          type: object
+          description: 上游 `/api/stats` 响应原样透传，不做相等判定
+        scope_note:
+          type: string
+          description: G* 当日全市场横截面计数，与单股历史时序 total 不同维度，禁止相等判定
+        applied_conds:
+          $ref: '#/components/schemas/AppliedConds'
+
+    StockData:
+      type: object
+      description: '`/stock/{code}` 成功载荷——日线原样透传 + F5 八字段平铺'
+      required: [code, stock, truncated, applied_conds]
+      allOf:
+        - $ref: '#/components/schemas/FwdDisclosureFields'
+      properties:
+        code:
+          type: string
+          examples: [sz300398]
+        stock:
+          description: 上游 `/api/stock/{code}` 响应原样透传（object 或 array），不改写
+          oneOf:
+            - type: object
+            - type: array
+        truncated:
+          type: boolean
+          enum: [true]
+          description: 日线硬截断标记（与 daily_window_truncated 同义）
+        applied_conds:
+          $ref: '#/components/schemas/AppliedConds'
+
+    SignalsData:
+      type: object
+      description: '`/signals/{code}` 成功载荷——F4 双口径并置 + F5 八字段平铺'
+      required: [code, scopes, fwd_return_disclosure, dual_scope_calls, applied_conds]
+      allOf:
+        - $ref: '#/components/schemas/FwdDisclosureFields'
+      properties:
+        code:
+          type: string
+          examples: [sz300398]
+        scopes:
+          $ref: '#/components/schemas/ScopesPair'
+        fwd_return_disclosure:
+          $ref: '#/components/schemas/FwdDisclosure'
+        fwd_formula:
+          type: string
+          enum: ['close[t+h] / open[t+1] - 1']
+        dual_scope_calls:
+          type: array
+          description: 两次只读上游调用的精确路径，供 fixture 精确匹配（避免 limit=60 子串误判）
+          items: { type: string }
+          examples:
+            - ['/api/signals/sz300398?limit=60', '/api/signals/sz300398?limit=600']
+        applied_conds:
+          $ref: '#/components/schemas/AppliedConds'
+        strategy_verdict:
+          type: string
+          enum: [not_approved]
+        caveat:
+          $ref: '#/components/schemas/CaveatArray'
+        caveat_text:
+          type: string
+          examples: ['未计成本模型·无样本外拆分·无多重检验校正·有条件存活样本']
