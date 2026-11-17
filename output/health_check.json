@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "generated_at": "2026-11-17T15:31:15",
+  "generated_at": "2026-11-17T15:35:00",
   "health_url": "http://127.0.0.1:8000/quant/api/v1/health",
   "contract_prefix": "/quant/api/v1",
   "positive_evidence": {
@@ -21,8 +21,8 @@
       },
       "metric_fingerprint": "e819989972c994d1",
       "ok": true,
-      "request_id": "dbf2529d90164e26",
-      "server_time": "2026-11-17T15:31:15"
+      "request_id": "6120ddcfc04b4a5e",
+      "server_time": "2026-11-17T15:35:00"
     }
   },
   "negative_controls": {
@@ -102,7 +102,7 @@
     {
       "name": "信封携带 request_id 与 server_time",
       "passed": true,
-      "detail": "request_id='dbf2529d90164e26' server_time='2026-11-17T15:31:15'"
+      "detail": "request_id='6120ddcfc04b4a5e' server_time='2026-11-17T15:35:00'"
     },
     {
       "name": "反向对照：/api/health 返回 404（该路径不是本服务健康端点）",

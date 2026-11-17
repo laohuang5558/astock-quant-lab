@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "generated_at": "2026-11-17T15:31:16",
+  "generated_at": "2026-11-17T15:35:00",
   "base": "http://192.168.2.203:8093",
   "service": "Agent 工作台 · ai-server（内网既有服务，非本平台部署）",
   "method": "只读 GET；未调用 POST /api/tasks 或任何写端点",
@@ -10,13 +10,13 @@
       "model": "deepseek-chat",
       "llm": true,
       "output": "/opt/agent-workbench/output",
-      "tasks": 8
+      "tasks": 9
     },
     "env": {
       "host": "ai-server",
       "model": "deepseek-chat",
-      "uptime": "up 2 weeks, 3 days, 22 hours, 18 minutes",
-      "now": "2026-11-17 15:31:15"
+      "uptime": "up 2 weeks, 3 days, 22 hours, 22 minutes",
+      "now": "2026-11-17 15:34:59"
     },
     "roles": {
       "research": [
@@ -62,8 +62,9 @@
       "/api/tasks/{tid}/events",
       "/api/tasks/{tid}/stream"
     ],
-    "n_tasks": 8,
+    "n_tasks": 9,
     "task_statuses": [
+      "done",
       "done",
       "done",
       "done",
@@ -108,7 +109,7 @@
     {
       "name": "健康检查 ok=true 且标注 LLM 可用",
       "passed": true,
-      "detail": "health={'ok': True, 'model': 'deepseek-chat', 'llm': True, 'output': '/opt/agent-workbench/output', 'tasks': 8}"
+      "detail": "health={'ok': True, 'model': 'deepseek-chat', 'llm': True, 'output': '/opt/agent-workbench/output', 'tasks': 9}"
     },
     {
       "name": "环境读数返回主机与模型",
@@ -143,7 +144,7 @@
     {
       "name": "任务列表可读且含已完成任务",
       "passed": true,
-      "detail": "n_tasks=8 statuses=['done', 'done', 'done', 'done', 'done', 'done', 'done', 'done']"
+      "detail": "n_tasks=9 statuses=['done', 'done', 'done', 'done', 'done', 'done', 'done', 'done', 'done']"
     },
     {
       "name": "历史任务事件含工具真实返回（非占位描述）",

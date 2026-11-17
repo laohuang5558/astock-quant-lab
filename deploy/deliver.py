@@ -236,7 +236,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <li><strong>本机完整版</strong>按 <a href="RUNNING.md">RUNNING.md</a> 启动 <code>python apps/api/server.py</code> 后访问 <code>http://127.0.0.1:8000/</code>，可真实触发单测、一致性校验、契约校验与完整回测；接口前缀 <code>/quant/api/v1</code> 与 <a href="openapi.yaml">OpenAPI 契约</a> 一致。</li>
 <li><strong>健康检查完整 URL</strong>：<code>{ctx['health_url']}</code>（HTTP {ctx['health_status']}，返回 JSON 含 <code>ok</code> / <code>data.status</code> / <code>metric_fingerprint</code>）。契约中 <code>/health</code> 需拼接 <code>servers[].url</code> 前缀；<code>/api/health</code> 实测 HTTP {ctx['health_negative']}，<strong>不是</strong>本服务健康端点，不得作为运行态判据。</li>
 <li>校验证据：<a href="health_check.json">健康端点确定性校验（{ctx['health_validation']}，含 2 条反向对照）</a> · <a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（9 面板）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验</a> · <a href="feikai-kdj-validate.json">单标的策略研究校验（{ctx['fk_validation']}）</a>。</li>
-<li>实现栈取舍：目标栈 FastAPI + Vue 3；当前 MVP 用 Flask + 原生 JS 实现同一接口契约，接口与前端数据模型不变，替换实现栈不影响契约。本机无 SSH 免密凭据与直接数据库账号，故暂不接线 <a href="schema.sql">DDL</a>；内网另有经 <code>:8093</code> 工作台间接执行 shell/SQL 的通道，见下节，不借它绕过授权。</li>
+<li>实现栈取舍：目标栈 FastAPI + Vue 3；当前 MVP 用 Flask + 原生 JS 实现同一接口契约，接口与前端数据模型不变，替换实现栈不影响契约。本机无 SSH 免密凭据与直接数据库账号，故暂不接线 <a href="schema.sql">DDL</a>；内网另有经 <code>:8093</code> 工作台间接执行 shell/SQL 的通道，见下节；本平台对该服务的调用限定为只读 GET，任务创建与配置变更列入 M1/M2 的运维侧实施项。</li>
 </ul></div>
 
 <h2>五·补充、内网既有 Agent 工作台（<a href="{ctx['wb_base']}/">{ctx['wb_base']}</a>）只读实测</h2>
@@ -354,7 +354,7 @@ def main() -> int:
         "可运行系统：app/index.html 控制台 9 个面板可打开，离线快照读数与 result.json 一致",
         "后端接口冒烟 41/41 通过（含真实执行 25 项单测、幂等键、冻结保护）",
         f"健康端点确定性校验 {ctx['health_validation']} 通过：{ctx['health_url']} → HTTP {ctx['health_status']} + 响应 JSON 双证据；/api/health 反向对照 HTTP {ctx['health_negative']}",
-        f"内网既有 Agent 工作台 {ctx['wb_base']} 只读探测 {ctx['wb_validation']} 通过（仅 GET、不触发 LLM 任务）；已登记其对架构硬约束的影响，不擅自建表或改配置",
+        f"内网既有 Agent 工作台 {ctx['wb_base']} 只读探测 {ctx['wb_validation']} 通过（仅 GET、不触发 LLM 任务）；已登记其对架构硬约束的影响，建表与配置变更列入 M1/M2 运维侧实施项",
         "前端在线 + 离线双路径渲染校验通过（9 面板 / 36 项，关键读数与指纹一致）",
         "飞凯材料策略研究：确定性校验通过（等价性断言、逐笔账目闭合、指纹、反向对照）",
         "飞凯材料研报与 result.json 绑定，结论不放行；研究不构成投资建议",

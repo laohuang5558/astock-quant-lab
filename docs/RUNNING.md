@@ -11,7 +11,7 @@
 
 内网服务器 `192.168.2.203` 上，本平台当前只使用 SeaweedFS Filer 匿名静态托管。**本机没有 SSH 免密凭据、也没有可直接使用的数据库账号**，所以没有部署常驻后端；静态版把 `output/result.json` 与净值序列固化为 `snapshot.js`，前端自动切换到「离线只读快照」模式并在界面上明确标注。这不是功能缺失的伪装：任务按钮在静态版被禁用且给出原因，完整交互在本机版可用。
 
-> **内网执行通道的精确口径（2026-11-17 实测补充）**：服务器上另有既有服务 `http://192.168.2.203:8093/`（Agent 工作台），它的 `ops` 角色带 `run_shell`、`dataops` 角色带 `sql_query`，任务事件日志可见真实命令与 SQL 返回；PG 16.15 上 pgvector 已装。即「内网完全无法执行 Python / 无数据库账号」的说法不准确，应修正为「本机无直接凭据，但存在经既有工作台间接执行的通道」。该通道需 `POST /api/tasks` 触发 LLM 任务，属对既有系统的写操作，本平台默认只读探测（`scripts/validate_workbench.py`）、不擅自建任务、不借它建表或改配置。详见 `docs/PLATFORM_ARCHITECTURE.md` 第 0.1.1 节。
+> **内网执行通道的精确口径（2026-11-17 实测补充）**：服务器上另有既有服务 `http://192.168.2.203:8093/`（Agent 工作台），它的 `ops` 角色带 `run_shell`、`dataops` 角色带 `sql_query`，任务事件日志可见真实命令与 SQL 返回；PG 16.15 上 pgvector 已装。即「内网完全无法执行 Python / 无数据库账号」的说法不准确，应修正为「本机无直接凭据，但存在经既有工作台间接执行的通道」。该通道需 `POST /api/tasks` 触发 LLM 任务，属对既有系统的写操作。本平台对该服务的调用限定为只读 GET（`scripts/validate_workbench.py`）；`POST /api/tasks` 任务创建、DDL 建表、nginx 与 `/ai/*` 配置变更均列入 M1/M2 的运维侧实施项，本版本不执行。详见 `docs/PLATFORM_ARCHITECTURE.md` 第 0.1.1 节。
 
 ## 二、本机启动
 
