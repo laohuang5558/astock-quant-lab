@@ -1,0 +1,1232 @@
+{
+  "meta": {
+    "title": "飞凯材料研究 v2 · 对话新增条件（月线死叉 / 10 周线 / 震荡区间）",
+    "version": "v2",
+    "generated_at": "2026-11-17T13:13:47",
+    "sample": {
+      "start": "2018-01-02",
+      "end": "2026-11-16",
+      "n_days": 2151
+    },
+    "data": {
+      "fetched_at": "2026-11-17T12:42:18+08:00",
+      "source": "腾讯证券 web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+      "level": "L3 第三方公开行情，非交易所一手数据",
+      "symbols": {
+        "300398": "飞凯材料（创业板，涨跌幅 20%）",
+        "000001": "上证指数"
+      },
+      "name_check": {
+        "sz300398": "飞凯材料",
+        "sh000001": "上证指数"
+      },
+      "requested_range": [
+        "2018-01-01",
+        "2026-11-17"
+      ],
+      "rows": {
+        "feikai_qfq.csv": 2151,
+        "feikai_raw.csv": 2152,
+        "index_sh000001.csv": 2152
+      },
+      "last_complete_day": "2026-11-16",
+      "intraday_bars": [
+        "2026-11-17"
+      ],
+      "intraday_note": "未复权 / 指数通道在交易时段会返回当日未收盘 bar；该 bar 仅用于展示当前状态，回测样本一律截断到 last_complete_day，避免把盘中快照当成已实现收盘价。",
+      "price_basis": {
+        "pnl_and_signal": "feikai_qfq.csv 前复权",
+        "limit_up_down": "feikai_raw.csv 未复权前收 + 未复权开盘",
+        "timing": "index_sh000001.csv 上证指数收盘"
+      },
+      "caveats": [
+        "amount 为 volume×100×典型价近似，非交易所真实成交额，不得用于容量测算。",
+        "前复权价会随后续除权除息变化，历史回测中的绝对价格口径与实时行情不同。",
+        "成交价仍用前复权价，涨跌停基准用未复权价，属已登记的半步口径折损；彻底分离需除权除息流水。",
+        "未建模分红再投资、停牌复牌现金处理、冲击成本与整手取整。"
+      ],
+      "compliance": "research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。"
+    },
+    "v1_result": "output/result.json",
+    "capital_note": "¥1,000,000 为研究假设规模，非用户实盘资金。",
+    "compliance": "research-only：不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。"
+  },
+  "conversation": [
+    {
+      "time": "12:28",
+      "speaker": "黄雲",
+      "quote": "今天飞凯表现还可以哈。我感觉是不是能T一波了？"
+    },
+    {
+      "time": "12:28",
+      "speaker": "黄雲",
+      "quote": "月线死叉了"
+    },
+    {
+      "time": "12:28",
+      "speaker": "黄雲",
+      "quote": "回踩5周线了昨天"
+    },
+    {
+      "time": "12:29",
+      "speaker": "Hy",
+      "quote": "10周线"
+    },
+    {
+      "time": "12:29",
+      "speaker": "Hy",
+      "quote": "震荡区间有点小"
+    },
+    {
+      "time": "12:30",
+      "speaker": "Hy",
+      "quote": "但是你记住，上证指数现在每次新低有反弹。新低买，反弹t"
+    },
+    {
+      "time": "12:30",
+      "speaker": "Hy",
+      "quote": "个股，看kdj，j值为负数，2负反弹"
+    },
+    {
+      "time": "12:31",
+      "speaker": "黄雲",
+      "quote": "我等10周线T一波"
+    }
+  ],
+  "conversation_reconciliation": [
+    {
+      "quote": "今天飞凯表现还可以哈。我感觉是不是能T一波了？",
+      "reading": "2026-11-17 盘中现价 29.68，较 11-16 收盘 7.0707%（未收盘、未入回测）",
+      "assessment": "仅为盘中事实读数；「是不是能 T」属于操作判断，本研究不评价、不建议。"
+    },
+    {
+      "quote": "月线死叉了",
+      "reading": "未完成 2026-11 月线 MACD DIF=3.9652 < DEA=4.4305 → 死叉=True，且本月刚发生下穿；但上一个已完成月状态=False；月线 KDJ 死叉=True、月线 MA5<MA10=True。",
+      "assessment": "三种口径结论不一致，且当月尚有交易日未走完；「已死叉」在确认口径下不成立，属未确认读数。"
+    },
+    {
+      "quote": "回踩5周线了昨天",
+      "reading": "11-16 最低 27.6，5 周线 27.784（偏离 -0.66%）→ 触及 5 周线=True。",
+      "assessment": "按前复权口径，该读数与 5 周线吻合。"
+    },
+    {
+      "quote": "10周线（纠正）",
+      "reading": "同日 10 周线 30.625，最低价偏离 -9.88%，收盘低于 10 周线 -9.49%；10 周线位于收盘价上方，需上涨约 10.48% 才触及。",
+      "assessment": "若「回踩」指向下触及支撑，则 11-16 更接近 5 周线而非 10 周线；若指等待反弹至 10 周线压力位，则是另一种解释。两种解释都在 v2 变体中分别回测，不做单一猜测。"
+    },
+    {
+      "quote": "震荡区间有点小",
+      "reading": "区间宽度（振幅）5 日 0.139493（历史分位 0.737774）、20 日 0.267634（分位 0.640244）；ATR20 0.057359（分位 0.82364）。",
+      "assessment": "「小」取决于观察尺度：短窗口与 20 日窗口的历史分位不同，本读数不支撑一个统一的「区间小」判断。"
+    },
+    {
+      "quote": "我等10周线T一波",
+      "reading": "截至 2026-11-16：触及 10 周线=False、收盘在 10 周线上方=False、距 10 周线 -9.49%。",
+      "assessment": "该句为操作意图，本研究只记录条件状态，不给出是否执行、何时执行的判断。"
+    }
+  ],
+  "new_conditions": {
+    "C_monthly_deathcross": {
+      "primary": "macd",
+      "definitions": {
+        "macd": "月线 MACD(12,26,9)：DIF<DEA（EMA adjust=False，初值取首月收盘）",
+        "kdj": "月线 KDJ(9,3,3)：K<D",
+        "ma5_ma10": "月线 MA5<MA10"
+      },
+      "confirmed_rule": "回测过滤只用「上一个已完成月」的状态，避免前视",
+      "provisional_caveat": "含未完成月的读数会随后续行情变化，只用于当前状态盘点",
+      "n_months": 107
+    },
+    "C_touch_weekly_ma": {
+      "ma_definition": "日频映射的 k 周均线 = 最近 (k-1) 根已完成周收盘 + 当日收盘（未完成周）",
+      "no_lookahead": true,
+      "touch_definition": "当日最低 <= MA×(1+0.015) 且收盘 >= MA×(1-0.015)",
+      "tol": 0.015,
+      "tol_sensitivity": [
+        0.01,
+        0.02,
+        0.03
+      ],
+      "price_basis": {
+        "weekly_ma_primary": "前复权 qfq（行情软件常见默认口径）",
+        "weekly_ma_secondary": "未复权 raw（并列登记，除权后两条线会分叉）"
+      }
+    },
+    "C_range_width": {
+      "definition": "(N 日最高 - N 日最低)/N 日最低；并列输出全样本分位",
+      "windows": [
+        5,
+        10,
+        20,
+        60
+      ],
+      "narrow_threshold": "20 日分位 <= 30%",
+      "wide_threshold": "20 日分位 >= 70%"
+    }
+  },
+  "current_state": {
+    "last_complete_day": "2026-11-16",
+    "prev_complete_day": "2026-11-13",
+    "stock_close_qfq": 27.72,
+    "stock_close_raw": 27.72,
+    "stock_low_qfq": 27.6,
+    "stock_low_raw": 27.6,
+    "index_close": 3602.57,
+    "ma5w_qfq": 27.784,
+    "ma10w_qfq": 30.625,
+    "ma5w_raw": 27.784,
+    "ma10w_raw": 30.625,
+    "dist_close_to_ma5w": -0.002303,
+    "dist_close_to_ma10w": -0.094857,
+    "dist_low_to_ma5w": -0.006623,
+    "dist_low_to_ma10w": -0.098776,
+    "closer_weekly_ma_by_low": "ma5w",
+    "touch10_today": false,
+    "touch5_today": true,
+    "near10_today": false,
+    "above_ma10w": false,
+    "gap_up_to_ma10w_pct": 10.479798,
+    "range20_width": 0.267634,
+    "range20_percentile": 0.640244,
+    "atr20_pct": 0.057359,
+    "atr20_percentile": 0.82364,
+    "range20_high": 31.45,
+    "range20_low": 24.81,
+    "range_by_window": {
+      "5": {
+        "width": 0.139493,
+        "percentile": 0.737774,
+        "high": 31.45,
+        "low": 27.6
+      },
+      "10": {
+        "width": 0.18724,
+        "percentile": 0.673436,
+        "high": 31.45,
+        "low": 26.49
+      },
+      "20": {
+        "width": 0.267634,
+        "percentile": 0.640244,
+        "high": 31.45,
+        "low": 24.81
+      },
+      "60": {
+        "width": 0.584039,
+        "percentile": 0.753346,
+        "high": 39.3,
+        "low": 24.81
+      }
+    },
+    "monthly": {
+      "month_label": "2026-11-16",
+      "is_complete_month": false,
+      "month_completeness_basis": "存在更晚的盘中 bar ['2026-11-17']，当月必然未走完",
+      "n_bars_in_month": 11,
+      "macd_dif": 3.9652,
+      "macd_dea": 4.4305,
+      "macd_hist": -0.9305,
+      "macd_deathcross": true,
+      "macd_cross_event_this_month": true,
+      "prev_month_macd_deathcross": false,
+      "kdj_k": 24.0173,
+      "kdj_d": 39.9408,
+      "kdj_j": -7.8296,
+      "kdj_deathcross": true,
+      "ma5": 31.172,
+      "ma10": 34.1445,
+      "ma_deathcross": true,
+      "penultimate_completed_states": {
+        "macd": false,
+        "kdj": true,
+        "ma5_ma10": false
+      },
+      "n_months": 107,
+      "note": "最后一个月若未走完，月线读数会随后续行情变化；不得当作已确认信号。"
+    },
+    "monthly_confirmed_state_macd": false,
+    "monthly_confirmed_state_kdj": true,
+    "monthly_confirmed_state_ma": false,
+    "intraday_snapshot": {
+      "index": {
+        "date": "2026-11-17",
+        "open": 3585.67,
+        "high": 3602.07,
+        "low": 3565.59,
+        "last": 3602.07,
+        "pct_vs_prev_close": -0.0139,
+        "note": "盘中未收盘快照，仅用于对照对话，未进入任何回测或统计"
+      },
+      "stock": {
+        "date": "2026-11-17",
+        "open": 27.51,
+        "high": 29.83,
+        "low": 27.4,
+        "last": 29.68,
+        "pct_vs_prev_close": 7.0707,
+        "note": "盘中未收盘快照，仅用于对照对话，未进入任何回测或统计"
+      }
+    },
+    "tol": 0.015,
+    "price_basis": {
+      "weekly_ma_primary": "前复权 qfq（行情软件常见默认口径）",
+      "weekly_ma_secondary": "未复权 raw（并列登记，除权后两条线会分叉）"
+    },
+    "note": "全部为截至最后完整交易日的事实读数；周线均线按无前视口径计算；不构成买卖点或操作建议。"
+  },
+  "event_study": {
+    "horizons": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "groups": {
+      "回踩 10 周线（全部）": {
+        "n_events": 441,
+        "horizons": {
+          "1": {
+            "n": 441,
+            "up_ratio": 0.460317,
+            "mean": 0.000431,
+            "median": -0.001129,
+            "excess_vs_all": -0.000383
+          },
+          "3": {
+            "n": 441,
+            "up_ratio": 0.473923,
+            "mean": 0.000152,
+            "median": -0.001801,
+            "excess_vs_all": -0.002377
+          },
+          "5": {
+            "n": 440,
+            "up_ratio": 0.497727,
+            "mean": 0.002086,
+            "median": 0.0,
+            "excess_vs_all": -0.002178
+          },
+          "10": {
+            "n": 440,
+            "up_ratio": 0.490909,
+            "mean": 0.009085,
+            "median": -0.001582,
+            "excess_vs_all": 0.000871
+          }
+        }
+      },
+      "回踩 5 周线（全部）": {
+        "n_events": 675,
+        "horizons": {
+          "1": {
+            "n": 674,
+            "up_ratio": 0.486647,
+            "mean": 0.000985,
+            "median": 0.0,
+            "excess_vs_all": 0.000171
+          },
+          "3": {
+            "n": 674,
+            "up_ratio": 0.485163,
+            "mean": 0.001033,
+            "median": -0.001144,
+            "excess_vs_all": -0.001496
+          },
+          "5": {
+            "n": 674,
+            "up_ratio": 0.501484,
+            "mean": 0.004188,
+            "median": 0.000505,
+            "excess_vs_all": -7.6e-05
+          },
+          "10": {
+            "n": 672,
+            "up_ratio": 0.529762,
+            "mean": 0.013241,
+            "median": 0.006784,
+            "excess_vs_all": 0.005026
+          }
+        }
+      },
+      "回踩 10 周线 + 月线死叉状态": {
+        "n_events": 229,
+        "horizons": {
+          "1": {
+            "n": 229,
+            "up_ratio": 0.436681,
+            "mean": -0.001123,
+            "median": -0.001887,
+            "excess_vs_all": -0.001937
+          },
+          "3": {
+            "n": 229,
+            "up_ratio": 0.427948,
+            "mean": -0.002956,
+            "median": -0.005063,
+            "excess_vs_all": -0.005485
+          },
+          "5": {
+            "n": 229,
+            "up_ratio": 0.432314,
+            "mean": -0.003831,
+            "median": -0.005017,
+            "excess_vs_all": -0.008096
+          },
+          "10": {
+            "n": 229,
+            "up_ratio": 0.423581,
+            "mean": -0.008179,
+            "median": -0.012107,
+            "excess_vs_all": -0.016393
+          }
+        }
+      },
+      "回踩 10 周线 + 非死叉": {
+        "n_events": 212,
+        "horizons": {
+          "1": {
+            "n": 212,
+            "up_ratio": 0.485849,
+            "mean": 0.00211,
+            "median": -0.000219,
+            "excess_vs_all": 0.001296
+          },
+          "3": {
+            "n": 212,
+            "up_ratio": 0.523585,
+            "mean": 0.00351,
+            "median": 0.001934,
+            "excess_vs_all": 0.000981
+          },
+          "5": {
+            "n": 211,
+            "up_ratio": 0.56872,
+            "mean": 0.008508,
+            "median": 0.012574,
+            "excess_vs_all": 0.004244
+          },
+          "10": {
+            "n": 211,
+            "up_ratio": 0.563981,
+            "mean": 0.027822,
+            "median": 0.017003,
+            "excess_vs_all": 0.019607
+          }
+        }
+      },
+      "回踩 10 周线 + 窄幅区间（分位<=30%）": {
+        "n_events": 235,
+        "horizons": {
+          "1": {
+            "n": 235,
+            "up_ratio": 0.459574,
+            "mean": 7.5e-05,
+            "median": -0.001011,
+            "excess_vs_all": -0.000739
+          },
+          "3": {
+            "n": 235,
+            "up_ratio": 0.476596,
+            "mean": 0.000871,
+            "median": -0.003515,
+            "excess_vs_all": -0.001658
+          },
+          "5": {
+            "n": 235,
+            "up_ratio": 0.510638,
+            "mean": 0.002403,
+            "median": 0.000676,
+            "excess_vs_all": -0.001861
+          },
+          "10": {
+            "n": 235,
+            "up_ratio": 0.53617,
+            "mean": 0.011933,
+            "median": 0.013588,
+            "excess_vs_all": 0.003718
+          }
+        }
+      },
+      "回踩 10 周线 + 宽幅区间（分位>=70%）": {
+        "n_events": 75,
+        "horizons": {
+          "1": {
+            "n": 75,
+            "up_ratio": 0.4,
+            "mean": 0.001199,
+            "median": -0.005487,
+            "excess_vs_all": 0.000385
+          },
+          "3": {
+            "n": 75,
+            "up_ratio": 0.493333,
+            "mean": -0.000215,
+            "median": -0.000814,
+            "excess_vs_all": -0.002744
+          },
+          "5": {
+            "n": 75,
+            "up_ratio": 0.52,
+            "mean": 0.007605,
+            "median": 0.003957,
+            "excess_vs_all": 0.00334
+          },
+          "10": {
+            "n": 75,
+            "up_ratio": 0.48,
+            "mean": 0.0264,
+            "median": -0.001679,
+            "excess_vs_all": 0.018186
+          }
+        }
+      },
+      "窄幅区间（分位<=30%，不看回踩）": {
+        "n_events": 639,
+        "horizons": {
+          "1": {
+            "n": 639,
+            "up_ratio": 0.499218,
+            "mean": -4.2e-05,
+            "median": 0.0,
+            "excess_vs_all": -0.000856
+          },
+          "3": {
+            "n": 639,
+            "up_ratio": 0.496088,
+            "mean": 0.001828,
+            "median": 0.0,
+            "excess_vs_all": -0.000701
+          },
+          "5": {
+            "n": 639,
+            "up_ratio": 0.516432,
+            "mean": 0.005288,
+            "median": 0.002299,
+            "excess_vs_all": 0.001023
+          },
+          "10": {
+            "n": 639,
+            "up_ratio": 0.539906,
+            "mean": 0.014721,
+            "median": 0.01102,
+            "excess_vs_all": 0.006507
+          }
+        }
+      },
+      "全样本基线（无条件）": {
+        "n_events": 2112,
+        "horizons": {
+          "1": {
+            "n": 2111,
+            "up_ratio": 0.48792,
+            "mean": 0.00085,
+            "median": 0.0,
+            "excess_vs_all": 3.6e-05
+          },
+          "3": {
+            "n": 2109,
+            "up_ratio": 0.500237,
+            "mean": 0.002582,
+            "median": 0.000374,
+            "excess_vs_all": 5.3e-05
+          },
+          "5": {
+            "n": 2107,
+            "up_ratio": 0.501661,
+            "mean": 0.004298,
+            "median": 0.00058,
+            "excess_vs_all": 3.3e-05
+          },
+          "10": {
+            "n": 2102,
+            "up_ratio": 0.506185,
+            "mean": 0.008101,
+            "median": 0.001359,
+            "excess_vs_all": -0.000113
+          }
+        }
+      }
+    },
+    "note": "条件频率为历史统计，未做多重检验校正（8 组 × 4 周期 = 32 次比较），不得当作预测或交易依据。"
+  },
+  "event_random_control": {
+    "回踩 10 周线": {
+      "status": "evaluated",
+      "horizon": 5,
+      "n_paths": 1000,
+      "n_events": 440,
+      "event_mean": 0.002086,
+      "random_mean": 0.00419,
+      "random_p95": 0.009751,
+      "percentile": 0.263,
+      "significantly_better": false,
+      "note": "无放回抽样，抽样池为全部有效交易日；未做多重检验校正。"
+    },
+    "回踩 5 周线": {
+      "status": "evaluated",
+      "horizon": 5,
+      "n_paths": 1000,
+      "n_events": 674,
+      "event_mean": 0.004188,
+      "random_mean": 0.004232,
+      "random_p95": 0.008402,
+      "percentile": 0.482,
+      "significantly_better": false,
+      "note": "无放回抽样，抽样池为全部有效交易日；未做多重检验校正。"
+    },
+    "回踩 10 周线 + MACD 死叉": {
+      "status": "evaluated",
+      "horizon": 5,
+      "n_paths": 1000,
+      "n_events": 229,
+      "event_mean": -0.003831,
+      "random_mean": 0.004365,
+      "random_p95": 0.013142,
+      "percentile": 0.038,
+      "significantly_better": false,
+      "note": "无放回抽样，抽样池为全部有效交易日；未做多重检验校正。"
+    }
+  },
+  "baseline": {
+    "perf": {
+      "total_return": 0.095754,
+      "annualized_return": 0.010771,
+      "sharpe": 0.286219,
+      "volatility_annual": 0.040225,
+      "max_drawdown": -0.089991,
+      "calmar": 0.119685,
+      "n_trades": 7,
+      "n_closed_trades": 7,
+      "win_rate": 0.714286,
+      "avg_hold_days": 2.14,
+      "avg_trade_return_pct": 1.5568,
+      "cost_total_cny": 19408.32,
+      "cash_min_cny": 0.0,
+      "max_position_exposure": 1.0,
+      "final_equity_cny": 1095754.13
+    },
+    "n_signals": 9,
+    "n_days": 2151,
+    "exposure_days": 15,
+    "blocked_orders": 0,
+    "open_position": null
+  },
+  "audit": {
+    "signal_override_equity_diff": 0.0,
+    "same_trading_days_as_v1": true,
+    "note": "v2 复用 v1 的 backtest()/成本/T+1/出场规则，仅以 signals= 注入过滤后信号。"
+  },
+  "filter_variants": [
+    {
+      "name": "v2-0 主规则（v1 基线，无新增过滤）",
+      "filter_days": 2151,
+      "signals": 9,
+      "perf": {
+        "total_return": 0.095754,
+        "annualized_return": 0.010771,
+        "sharpe": 0.286219,
+        "volatility_annual": 0.040225,
+        "max_drawdown": -0.089991,
+        "calmar": 0.119685,
+        "n_trades": 7,
+        "n_closed_trades": 7,
+        "win_rate": 0.714286,
+        "avg_hold_days": 2.14,
+        "avg_trade_return_pct": 1.5568,
+        "cost_total_cny": 19408.32,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1095754.13
+      },
+      "n_signals": 9,
+      "n_days": 2151,
+      "exposure_days": 15,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": -0.03657,
+        "sharpe": -0.350778,
+        "max_drawdown": -0.089991,
+        "n_trades": 2,
+        "win_rate": 0.5,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-1 + 回踩 10 周线",
+      "filter_days": 441,
+      "signals": 1,
+      "perf": {
+        "total_return": 0.047587,
+        "annualized_return": 0.005461,
+        "sharpe": 0.222071,
+        "volatility_annual": 0.02601,
+        "max_drawdown": -0.029052,
+        "calmar": 0.187985,
+        "n_trades": 1,
+        "n_closed_trades": 1,
+        "win_rate": 1.0,
+        "avg_hold_days": 4.0,
+        "avg_trade_return_pct": 4.9161,
+        "cost_total_cny": 2585.4,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1047587.25
+      },
+      "n_signals": 1,
+      "n_days": 2151,
+      "exposure_days": 4,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-2 + 月线 MACD 死叉（已完成月）",
+      "filter_days": 1025,
+      "signals": 3,
+      "perf": {
+        "total_return": 0.05346,
+        "annualized_return": 0.00612,
+        "sharpe": 0.373846,
+        "volatility_annual": 0.016696,
+        "max_drawdown": -0.020548,
+        "calmar": 0.297842,
+        "n_trades": 3,
+        "n_closed_trades": 3,
+        "win_rate": 0.666667,
+        "avg_hold_days": 1.33,
+        "avg_trade_return_pct": 1.9404,
+        "cost_total_cny": 7709.29,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1053459.81
+      },
+      "n_signals": 3,
+      "n_days": 2151,
+      "exposure_days": 4,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.041418,
+        "sharpe": 0.815502,
+        "max_drawdown": 0.0,
+        "n_trades": 1,
+        "win_rate": 1.0,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-3 + 月线 MACD 非死叉",
+      "filter_days": 1087,
+      "signals": 6,
+      "perf": {
+        "total_return": 0.040148,
+        "annualized_return": 0.004622,
+        "sharpe": 0.14403,
+        "volatility_annual": 0.0366,
+        "max_drawdown": -0.089991,
+        "calmar": 0.051363,
+        "n_trades": 4,
+        "n_closed_trades": 4,
+        "win_rate": 0.75,
+        "avg_hold_days": 2.75,
+        "avg_trade_return_pct": 1.269,
+        "cost_total_cny": 10655.97,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1040148.01
+      },
+      "n_signals": 6,
+      "n_days": 2151,
+      "exposure_days": 11,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": -0.074886,
+        "sharpe": -0.875394,
+        "max_drawdown": -0.089991,
+        "n_trades": 1,
+        "win_rate": 0.0,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-4 + 月线 KDJ 死叉（已完成月）",
+      "filter_days": 911,
+      "signals": 4,
+      "perf": {
+        "total_return": -0.007101,
+        "annualized_return": -0.000835,
+        "sharpe": -0.019597,
+        "volatility_annual": 0.025749,
+        "max_drawdown": -0.089991,
+        "calmar": -0.009274,
+        "n_trades": 3,
+        "n_closed_trades": 3,
+        "win_rate": 0.666667,
+        "avg_hold_days": 2.33,
+        "avg_trade_return_pct": 0.0533,
+        "cost_total_cny": 7760.05,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 992898.7
+      },
+      "n_signals": 4,
+      "n_days": 2151,
+      "exposure_days": 7,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": -0.074886,
+        "sharpe": -0.875394,
+        "max_drawdown": -0.089991,
+        "n_trades": 1,
+        "win_rate": 0.0,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-5 + 回踩 10 周线 + MACD 死叉",
+      "filter_days": 229,
+      "signals": 0,
+      "perf": {
+        "total_return": 0.0,
+        "annualized_return": 0.0,
+        "sharpe": 0.0,
+        "volatility_annual": 0.0,
+        "max_drawdown": 0.0,
+        "calmar": null,
+        "n_trades": 0,
+        "n_closed_trades": 0,
+        "win_rate": null,
+        "avg_hold_days": null,
+        "avg_trade_return_pct": null,
+        "cost_total_cny": 0.0,
+        "cash_min_cny": 1000000.0,
+        "max_position_exposure": 0.0,
+        "final_equity_cny": 1000000.0
+      },
+      "n_signals": 0,
+      "n_days": 2151,
+      "exposure_days": 0,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-6 + 回踩 10 周线 + MACD 非死叉",
+      "filter_days": 212,
+      "signals": 1,
+      "perf": {
+        "total_return": 0.047587,
+        "annualized_return": 0.005461,
+        "sharpe": 0.222071,
+        "volatility_annual": 0.02601,
+        "max_drawdown": -0.029052,
+        "calmar": 0.187985,
+        "n_trades": 1,
+        "n_closed_trades": 1,
+        "win_rate": 1.0,
+        "avg_hold_days": 4.0,
+        "avg_trade_return_pct": 4.9161,
+        "cost_total_cny": 2585.4,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1047587.25
+      },
+      "n_signals": 1,
+      "n_days": 2151,
+      "exposure_days": 4,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-7 + 回踩 10 周线 + 排除窄幅区间",
+      "filter_days": 206,
+      "signals": 1,
+      "perf": {
+        "total_return": 0.047587,
+        "annualized_return": 0.005461,
+        "sharpe": 0.222071,
+        "volatility_annual": 0.02601,
+        "max_drawdown": -0.029052,
+        "calmar": 0.187985,
+        "n_trades": 1,
+        "n_closed_trades": 1,
+        "win_rate": 1.0,
+        "avg_hold_days": 4.0,
+        "avg_trade_return_pct": 4.9161,
+        "cost_total_cny": 2585.4,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1047587.25
+      },
+      "n_signals": 1,
+      "n_days": 2151,
+      "exposure_days": 4,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-8 + 回踩 10 周线 + 仅窄幅区间",
+      "filter_days": 235,
+      "signals": 0,
+      "perf": {
+        "total_return": 0.0,
+        "annualized_return": 0.0,
+        "sharpe": 0.0,
+        "volatility_annual": 0.0,
+        "max_drawdown": 0.0,
+        "calmar": null,
+        "n_trades": 0,
+        "n_closed_trades": 0,
+        "win_rate": null,
+        "avg_hold_days": null,
+        "avg_trade_return_pct": null,
+        "cost_total_cny": 0.0,
+        "cash_min_cny": 1000000.0,
+        "max_position_exposure": 0.0,
+        "final_equity_cny": 1000000.0
+      },
+      "n_signals": 0,
+      "n_days": 2151,
+      "exposure_days": 0,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-9 全叠加：回踩10周线 + 死叉 + 非窄幅",
+      "filter_days": 79,
+      "signals": 0,
+      "perf": {
+        "total_return": 0.0,
+        "annualized_return": 0.0,
+        "sharpe": 0.0,
+        "volatility_annual": 0.0,
+        "max_drawdown": 0.0,
+        "calmar": null,
+        "n_trades": 0,
+        "n_closed_trades": 0,
+        "win_rate": null,
+        "avg_hold_days": null,
+        "avg_trade_return_pct": null,
+        "cost_total_cny": 0.0,
+        "cash_min_cny": 1000000.0,
+        "max_position_exposure": 0.0,
+        "final_equity_cny": 1000000.0
+      },
+      "n_signals": 0,
+      "n_days": 2151,
+      "exposure_days": 0,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-10 + 回踩 5 周线",
+      "filter_days": 675,
+      "signals": 0,
+      "perf": {
+        "total_return": 0.0,
+        "annualized_return": 0.0,
+        "sharpe": 0.0,
+        "volatility_annual": 0.0,
+        "max_drawdown": 0.0,
+        "calmar": null,
+        "n_trades": 0,
+        "n_closed_trades": 0,
+        "win_rate": null,
+        "avg_hold_days": null,
+        "avg_trade_return_pct": null,
+        "cost_total_cny": 0.0,
+        "cash_min_cny": 1000000.0,
+        "max_position_exposure": 0.0,
+        "final_equity_cny": 1000000.0
+      },
+      "n_signals": 0,
+      "n_days": 2151,
+      "exposure_days": 0,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-11 + 回踩 5 周线 + MACD 死叉",
+      "filter_days": 348,
+      "signals": 0,
+      "perf": {
+        "total_return": 0.0,
+        "annualized_return": 0.0,
+        "sharpe": 0.0,
+        "volatility_annual": 0.0,
+        "max_drawdown": 0.0,
+        "calmar": null,
+        "n_trades": 0,
+        "n_closed_trades": 0,
+        "win_rate": null,
+        "avg_hold_days": null,
+        "avg_trade_return_pct": null,
+        "cost_total_cny": 0.0,
+        "cash_min_cny": 1000000.0,
+        "max_position_exposure": 0.0,
+        "final_equity_cny": 1000000.0
+      },
+      "n_signals": 0,
+      "n_days": 2151,
+      "exposure_days": 0,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-tol 回踩 10 周线 ±1%",
+      "filter_days": 359,
+      "signals": 1,
+      "perf": {
+        "total_return": 0.047587,
+        "annualized_return": 0.005461,
+        "sharpe": 0.222071,
+        "volatility_annual": 0.02601,
+        "max_drawdown": -0.029052,
+        "calmar": 0.187985,
+        "n_trades": 1,
+        "n_closed_trades": 1,
+        "win_rate": 1.0,
+        "avg_hold_days": 4.0,
+        "avg_trade_return_pct": 4.9161,
+        "cost_total_cny": 2585.4,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1047587.25
+      },
+      "n_signals": 1,
+      "n_days": 2151,
+      "exposure_days": 4,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-tol 回踩 10 周线 ±2%",
+      "filter_days": 516,
+      "signals": 1,
+      "perf": {
+        "total_return": 0.047587,
+        "annualized_return": 0.005461,
+        "sharpe": 0.222071,
+        "volatility_annual": 0.02601,
+        "max_drawdown": -0.029052,
+        "calmar": 0.187985,
+        "n_trades": 1,
+        "n_closed_trades": 1,
+        "win_rate": 1.0,
+        "avg_hold_days": 4.0,
+        "avg_trade_return_pct": 4.9161,
+        "cost_total_cny": 2585.4,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1047587.25
+      },
+      "n_signals": 1,
+      "n_days": 2151,
+      "exposure_days": 4,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    },
+    {
+      "name": "v2-tol 回踩 10 周线 ±3%",
+      "filter_days": 663,
+      "signals": 3,
+      "perf": {
+        "total_return": 0.026605,
+        "annualized_return": 0.003081,
+        "sharpe": 0.127608,
+        "volatility_annual": 0.026858,
+        "max_drawdown": -0.029052,
+        "calmar": 0.106046,
+        "n_trades": 2,
+        "n_closed_trades": 2,
+        "win_rate": 0.5,
+        "avg_hold_days": 2.5,
+        "avg_trade_return_pct": 1.5302,
+        "cost_total_cny": 5169.69,
+        "cash_min_cny": 0.0,
+        "max_position_exposure": 1.0,
+        "final_equity_cny": 1026604.61
+      },
+      "n_signals": 3,
+      "n_days": 2151,
+      "exposure_days": 5,
+      "blocked_orders": 0,
+      "open_position": null,
+      "oos": {
+        "n_days": 694,
+        "total_return": 0.0,
+        "sharpe": 0.0,
+        "max_drawdown": 0.0,
+        "n_trades": 0,
+        "win_rate": null,
+        "note": "以区间首日净值为分母；跨越切点的持仓按净值截断，不计为区间内平仓"
+      }
+    }
+  ],
+  "variant_summary": {
+    "n_variants": 15,
+    "signals_min": 0,
+    "signals_max": 9,
+    "trades_min": 0,
+    "trades_max": 7,
+    "n_zero_signal": 5,
+    "n_zero_trade": 5
+  },
+  "random_control_v2": {
+    "v2-1 + 回踩 10 周线": {
+      "status": "evaluated",
+      "n_paths": 200,
+      "n_signals_per_path": 1,
+      "eligible_days": 441,
+      "random_sharpe_mean": -0.010951,
+      "random_total_return_mean": 0.002708,
+      "baseline_sharpe": 0.222071,
+      "baseline_total_return": 0.047587,
+      "sharpe_percentile": 0.625,
+      "return_percentile": 0.695,
+      "significantly_better_than_random": false,
+      "note": "随机池限定为满足同一过滤条件的日期；只替换信号日，引擎/成本/出场完全一致。信号数极少时该分位不具解释力。"
+    },
+    "v2-9 全叠加：回踩10周线 + 死叉 + 非窄幅": {
+      "status": "no_signals",
+      "note": "该变体未产生任何信号，无法做显著性对照"
+    },
+    "v2-10 + 回踩 5 周线": {
+      "status": "no_signals",
+      "note": "该变体未产生任何信号，无法做显著性对照"
+    }
+  },
+  "v1_reference": {
+    "result_file": "output/result.json",
+    "note": "v1 主规则的 200 次等价随机对照与 14 个单轴变体结论保持不变，见 v1 研报。"
+  },
+  "verdict": {
+    "final": "不放行",
+    "engineering": "可复跑、可审计（无前视口径已显式实现）",
+    "scope": "针对「新增周线/月线/区间条件能否改善 v1 主规则」这一问题",
+    "hard_fail_items": [
+      "新增条件叠加后最大平仓交易 < 30 笔",
+      "全叠加变体信号数 <= 2（样本坍缩）",
+      "事件统计未做多重检验校正（8 组 × 4 周期）",
+      "月线死叉三种口径结论不一致",
+      "未完成月读数不可作为已确认信号",
+      "代表变体未显著优于等价随机对照"
+    ],
+    "hard_fail": {
+      "新增条件叠加后最大平仓交易 < 30 笔": true,
+      "全叠加变体信号数 <= 2（样本坍缩）": true,
+      "事件统计未做多重检验校正（8 组 × 4 周期）": true,
+      "月线死叉三种口径结论不一致": true,
+      "未完成月读数不可作为已确认信号": true,
+      "代表变体未显著优于等价随机对照": true
+    },
+    "basis": "由变体信号数/交易数、等价随机对照、月线口径一致性与事件统计比较次数推导",
+    "note": "v1 的结论不放行不因新增条件而改变；新增条件使样本进一步坍缩，无法提供统计支持。"
+  },
+  "caveats": [
+    "「月线死叉」未指明指标，MACD / KDJ / 均线三种口径本就不同；且当月未走完，读数会变。",
+    "「回踩 10 周线」未指明方向：当前 10 周线在价格上方，与「向下回踩支撑」的直觉相反，两种解释均已回测。",
+    "「震荡区间小」未指明尺度；5/10/20/60 日窗口的历史分位不同，无法收敛成单一判断。",
+    "周线/月线均为日线重采样，未使用交易所官方周月线；未完成周期的均线按行情软件口径随当日价格变动。",
+    "事件统计做了 8 组 × 4 周期 = 32 次比较，未做 FDR/DSR 校正，任何「显著」都可能是多重检验产物。",
+    "v1 主规则仅 9 信号 / 7 笔平仓，再叠加条件后样本坍缩到个位数，统计功效接近零。",
+    "前复权与未复权在本样本末段一致，但历史除权段会分叉；未建模分红再投资、停复牌、冲击成本与整手取整。",
+    "2026-11-17 为盘中未收盘 bar，仅用于对照对话，未进入任何回测与统计。"
+  ],
+  "compliance": "research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。"
+}

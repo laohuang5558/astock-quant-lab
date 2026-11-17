@@ -97,6 +97,38 @@ def feikai_research() -> dict:
     }
 
 
+def feikai_v2() -> dict:
+    """v2 对话新增条件研究摘要：从 result_v2.json 派生，做字段投影控制快照体积。"""
+    result_path = RESEARCH / "result_v2.json"
+    fp_path = RESEARCH / "report_fingerprint_v2.json"
+    if not result_path.exists() or not fp_path.exists():
+        raise RuntimeError("飞凯材料 v2 产物缺失，请先运行 run_v2.py 与 build_report_v2.py")
+    r = json.loads(result_path.read_text(encoding="utf-8"))
+    fp = json.loads(fp_path.read_text(encoding="utf-8"))["fingerprint"]
+    variants = [{
+        "name": v["name"], "filter_days": v["filter_days"], "signals": v["signals"],
+        "n_trades": v["perf"]["n_trades"], "total_return": v["perf"]["total_return"],
+        "sharpe": v["perf"]["sharpe"],
+        "oos_total_return": v["oos"].get("total_return"),
+    } for v in r["filter_variants"]]
+    return {
+        "fingerprint": fp,
+        "sample": r["meta"]["sample"],
+        "conversation": r["conversation"],
+        "reconciliation": r["conversation_reconciliation"],
+        "current": r["current_state"],
+        "monthly_definitions": r["new_conditions"]["C_monthly_deathcross"]["definitions"],
+        "variants": variants,
+        "variant_summary": r["variant_summary"],
+        "event_study": r["event_study"],
+        "event_random_control": r["event_random_control"],
+        "random_control_v2": r["random_control_v2"],
+        "verdict": r["verdict"],
+        "caveats": r["caveats"],
+        "report_url": "feikai-kdj-v2-report.html",
+    }
+
+
 def main() -> int:
     rep = json.loads((ROOT / "output" / "result.json").read_text(encoding="utf-8"))
     fp = metric_fingerprint(rep)
@@ -107,12 +139,15 @@ def main() -> int:
         "equity": equity_series(),
         "opinions": parse_audit_panel(),
         "feikai": feikai_research(),
+        "feikai_v2": feikai_v2(),
     }
     assert snap["equity"], "净值序列不能为空"
     assert snap["opinions"]["opinions"], "审核意见解析结果不能为空（防正则假阴性）"
     assert snap["result"]["quality_gate"]["final_verdict"], "质量门读数缺失"
     assert snap["feikai"]["baseline"]["n_trades"] >= 0, "飞凯材料研究读数缺失"
     assert snap["feikai"]["verdict"]["final"], "飞凯材料研究裁决缺失"
+    assert snap["feikai_v2"]["variant_summary"]["n_variants"] >= 10, "飞凯材料 v2 研究读数缺失"
+    assert snap["feikai_v2"]["verdict"]["final"], "飞凯材料 v2 裁决缺失"
 
     out = ROOT / "apps" / "web" / "snapshot.js"
     payload = json.dumps(snap, ensure_ascii=False, separators=(",", ":"))

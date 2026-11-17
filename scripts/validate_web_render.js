@@ -79,6 +79,23 @@ async function runMode(mode) {
         && fk.includes('等价随机对照') && fk.length > 400);
   check(`[${mode}] 飞凯材料策略面板含逐笔交易与变体表`,
         (fk.match(/<tr>/g) || []).length >= 7 && fk.includes('主规则'));
+  // v2：对话新增条件面板的数值必须来自同一份快照，且检查本身不能恒真
+  const V = (ctx.window.__QUANT_SNAPSHOT__ || {}).feikai_v2 || {};
+  const ma5 = Number(V.current && V.current.ma5w_qfq).toFixed(3);
+  const ma10 = Number(V.current && V.current.ma10w_qfq).toFixed(3);
+  const fp2 = String(V.fingerprint || '');
+  check(`[${mode}] v2 面板含新增条件核对与合规边界`,
+        fk.includes('v2 · 对话新增条件核对') && fk.includes('月线 MACD 死叉')
+        && fk.includes('不构成买卖点或操作建议'));
+  check(`[${mode}] v2 面板绑定 5 / 10 周线真实读数`,
+        !!V.current && fk.includes(ma5) && fk.includes(ma10));
+  check(`[${mode}] v2 面板绑定变体数与样本坍缩读数`,
+        !!V.variant_summary && fk.includes(String(V.variant_summary.n_variants))
+        && fk.includes('全叠加信号数') && fk.includes('样本坍缩'));
+  check(`[${mode}] v2 面板绑定研究指纹与报告链接`,
+        fp2.length === 16 && fk.includes(fp2) && fk.includes('feikai-kdj-v2-report.html'));
+  check(`[${mode}] 反向对照：抹掉 v2 指纹后绑定失效`,
+        fp2.length === 16 && !fk.replace(fp2, '0000000000000000').includes(fp2));
   check(`[${mode}] 无数据装载失败`, !allHtml.includes('数据装载失败') && !allHtml.includes('class="err"'));
   check(`[${mode}] 质量门不放行结论出现`, allHtml.includes('不放行'));
   check(`[${mode}] 总收益 52.04% 出现`, allHtml.includes('52.04%'));

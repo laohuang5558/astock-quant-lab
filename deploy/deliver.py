@@ -73,6 +73,7 @@ def build_bundle() -> Path:
             (WORKSPACE / "astock-quant-design-report.html", "reports/astock-quant-design-report.html"),
             (WORKSPACE / "astock-quant-audit-report.html", "reports/astock-quant-audit-report.html"),
             (WORKSPACE / "astock-quant-feikai-kdj-report.html", "reports/astock-quant-feikai-kdj-report.html"),
+            (WORKSPACE / "astock-quant-feikai-kdj-v2-report.html", "reports/astock-quant-feikai-kdj-v2-report.html"),
             (WORKSPACE / "astock-quant-designer.zip", "skill/astock-quant-designer.zip"),
         ]
         for src, arc in extras:
@@ -90,7 +91,22 @@ def load_context() -> dict:
     fk = json.loads((fk_dir / "result.json").read_text(encoding="utf-8"))
     fkv = json.loads((fk_dir / "validate_research.json").read_text(encoding="utf-8"))
     fk_fp = json.loads((fk_dir / "report_fingerprint.json").read_text(encoding="utf-8"))["fingerprint"]
+    fk2 = json.loads((fk_dir / "result_v2.json").read_text(encoding="utf-8"))
+    fk2v = json.loads((fk_dir / "validate_v2.json").read_text(encoding="utf-8"))
+    fk2_fp = json.loads((fk_dir / "report_fingerprint_v2.json").read_text(encoding="utf-8"))["fingerprint"]
+    full_stack_signals = next(v["signals"] for v in fk2["filter_variants"]
+                              if v["name"].startswith("v2-9"))
     return {
+        "fk2_fingerprint": fk2_fp,
+        "fk2_ok": fk2v["ok"],
+        "fk2_validation": f"{fk2v['passed']}/{fk2v['checks']}",
+        "fk2_verdict": fk2["verdict"]["final"],
+        "fk2_n_variants": fk2["variant_summary"]["n_variants"],
+        "fk2_full_signals": full_stack_signals,
+        "fk2_ma5w": fk2["current_state"]["ma5w_qfq"],
+        "fk2_ma10w": fk2["current_state"]["ma10w_qfq"],
+        "fk2_range_pctile": fk2["current_state"]["range20_percentile"],
+        "fk2_last_day": fk2["current_state"]["last_complete_day"],
         "fingerprint": verify["fingerprint"],
         "fk_fingerprint": fk_fp,
         "fk_ok": fkv["ok"],
@@ -181,6 +197,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <li><a href="astock-quant-design-report.html">可视化设计报告（ECharts，含指纹）</a></li>
 <li><a href="astock-quant-audit-report.html">专家团联合审核报告</a></li>
 <li><strong><a href="feikai-kdj-report.html">飞凯材料 KDJ 择时策略研报（单标的研究）</a></strong> —— 规则形式化、前提检验、7 笔交易、样本内外、随机对照与裁决</li>
+<li><strong><a href="feikai-kdj-v2-report.html">飞凯材料研究 v2（对话新增条件核对）</a></strong> —— 月线死叉 / 回踩 10 周线 / 震荡区间的形式化、逐条读数核对、无前视反证与条件叠加检验</li>
 <li><a href="PLATFORM_ARCHITECTURE.md">平台化技术架构（前后端 / 数据库 / 智能体编排 / 接口契约 / 目录 / 里程碑）</a></li>
 <li><a href="openapi.yaml">接口契约 OpenAPI 3.1</a> · <a href="schema.sql">数据库 DDL</a> · <a href="ACCEPTANCE.md">验收清单文本版</a></li>
 <li><a href="astock-quant-lab-v3.tar.gz">完整工程交付包（tar.gz）</a> · <a href="astock-quant-designer.zip">WorkBuddy 技能包</a></li>
@@ -225,6 +242,26 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <p class="sub">该研究为历史统计，不构成投资建议；不荐股、不给买卖点与目标价、不承诺收益、不代操作。</p>
 </div>
 
+<h2>七、v2 · 对话新增条件核对（2026-11-17 12:28~12:31 对话）</h2>
+<div class="card">
+<p>对话里此前未进模型的三个说法——<strong>月线死叉 / 回踩 10 周线（原话 5 周线被纠正）/ 震荡区间有点小</strong>——已形式化为可证伪条件：
+月线死叉给出 MACD / KDJ / MA5-MA10 三种口径并用「上一个已完成月」做无前视过滤；周线均线按「已完成周 + 当日未完成周」计算；
+区间宽度按 5/10/20/60 日多窗口并列。研究指纹 <code>{ctx['fk2_fingerprint']}</code>；确定性校验 <strong>{ctx['fk2_validation']}</strong>，
+其中无前视由 5 个历史截点截断重算反证（差值 0.0）。</p>
+<table>
+<tr><th>项</th><th>读数</th><th>说明</th></tr>
+<tr><td>v2 裁决</td><td><span class="tag bad">{ctx['fk2_verdict']}</span></td><td>v1 结论不变；新增条件使样本坍缩，无法提供统计支持</td></tr>
+<tr><td>5 / 10 周线（前复权）</td><td>{ctx['fk2_ma5w']} / {ctx['fk2_ma10w']}</td><td>截至 {ctx['fk2_last_day']}；10 周线位于收盘价上方，「回踩」方向存在歧义，两种解释均回测</td></tr>
+<tr><td>月线 MACD 死叉</td><td>未完成月=是 / 已完成月=否</td><td>三种口径结论不一致；当月尚有交易日，读数会变</td></tr>
+<tr><td>20 日振幅历史分位</td><td>{ctx['fk2_range_pctile']*100:.1f}%</td><td>四个窗口分位均 > 50%，不支撑统一的「区间小」判断</td></tr>
+<tr><td>条件叠加变体 / 全叠加信号</td><td>{ctx['fk2_n_variants']} 个 / {ctx['fk2_full_signals']} 次</td><td>主规则 9 次信号，全叠加后归零；同为「月线死叉」换口径收益符号相反（各 3 笔交易）</td></tr>
+</table>
+<p style="margin-top:10px"><a href="feikai-kdj-v2-report.html">打开 v2 完整研报</a> ·
+<a href="feikai-kdj-v2-result.json">机器可读结果</a> · <a href="feikai-kdj-v2-summary.md">摘要文本版</a> ·
+<a href="feikai-kdj-v2-validate.json">35 项校验明细</a>；控制台「飞凯材料策略」面板底部同步展示状态核对。</p>
+<p class="sub">「是不是能 T」「我等 10 周线 T 一波」属操作判断，本研究只记录条件状态，不评价、不建议。全部为历史统计与事实读数，不构成投资建议。</p>
+</div>
+
 <div class="foot">合规：research-only，不含实盘下单、券商接口、自动交易循环；不荐股、不给买卖点与目标价、不承诺收益、不代操作。
 回测结果不等于实盘表现，历史业绩不代表未来。本页为静态验收页，勾选状态仅保存在当前浏览器页面内。</div>
 </body></html>"""
@@ -259,6 +296,11 @@ def main() -> int:
         ("feikai-kdj-result.json", ROOT / "research" / "feikai_kdj" / "output" / "result.json"),
         ("feikai-kdj-summary.md", ROOT / "research" / "feikai_kdj" / "output" / "RESEARCH_SUMMARY.md"),
         ("feikai-kdj-validate.json", ROOT / "research" / "feikai_kdj" / "output" / "validate_research.json"),
+        # v2：对话新增条件（月线死叉 / 10 周线 / 震荡区间）
+        ("feikai-kdj-v2-report.html", WORKSPACE / "astock-quant-feikai-kdj-v2-report.html"),
+        ("feikai-kdj-v2-result.json", ROOT / "research" / "feikai_kdj" / "output" / "result_v2.json"),
+        ("feikai-kdj-v2-summary.md", ROOT / "research" / "feikai_kdj" / "output" / "RESEARCH_SUMMARY_V2.md"),
+        ("feikai-kdj-v2-validate.json", ROOT / "research" / "feikai_kdj" / "output" / "validate_v2.json"),
         # 可运行的静态系统（零依赖，Filer 子目录直接托管）
         ("app/index.html", ROOT / "apps" / "web" / "index.html"),
         ("app/snapshot.js", ROOT / "apps" / "web" / "snapshot.js"),
@@ -283,6 +325,8 @@ def main() -> int:
         "前端在线 + 离线双路径渲染校验通过（9 面板 / 36 项，关键读数与指纹一致）",
         "飞凯材料策略研究：确定性校验通过（等价性断言、逐笔账目闭合、指纹、反向对照）",
         "飞凯材料研报与 result.json 绑定，结论不放行；研究不构成投资建议",
+        f"飞凯材料 v2：月线死叉三口径 / 10 周线 / 震荡区间已形式化，{ctx['fk2_validation']} 项确定性校验通过（含无前视截断重算反证）",
+        f"v2 研报与 result_v2.json 绑定；{ctx['fk2_n_variants']} 个变体、全叠加信号 {ctx['fk2_full_signals']} 次，样本坍缩如实登记，结论不放行",
         "本机完整版启动命令见 RUNNING.md：python apps/api/server.py，端口 8000",
         "合规：research-only，无实盘下单与荐股内容",
     ]

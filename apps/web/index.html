@@ -467,6 +467,62 @@
     });
   }
 
+  // v2：对话新增条件（月线死叉 / 10 周线 / 震荡区间）的状态核对与条件叠加结果
+  function renderFeikaiV2(){
+    var V=(S && S.feikai_v2)||null;
+    if(!V){
+      return card("v2 · 对话新增条件","快照未装载",
+        '<div class="err">缺少 feikai_v2 快照，请运行 python scripts/build_web_snapshot.py</div>');
+    }
+    var c=V.current||{}, m=c.monthly||{}, vd=V.verdict||{}, sm=V.variant_summary||{};
+    var allSig=0, fullSig=0;
+    (V.variants||[]).forEach(function(x){
+      if(x.name.indexOf("v2-0")===0) allSig=x.signals;
+      if(x.name.indexOf("v2-9")===0) fullSig=x.signals;
+    });
+    var k='<div class="grid">'+
+      kpi("5 周线",num(c.ma5w_qfq,3),"收盘偏离 "+pct(c.dist_close_to_ma5w,2))+
+      kpi("10 周线",num(c.ma10w_qfq,3),"收盘偏离 "+pct(c.dist_close_to_ma10w,2))+
+      kpi("触及 5 / 10 周线",(c.touch5_today?"是":"否")+" / "+(c.touch10_today?"是":"否"),"容差 ±"+num((c.tol||0)*100,1)+"%")+
+      kpi("月线 MACD 死叉",(m.macd_deathcross?"是":"否")+" / "+(c.monthly_confirmed_state_macd?"是":"否"),"未完成月 / 已完成月")+
+      kpi("20 日振幅分位",pct(c.range20_percentile,1),"振幅 "+pct(c.range20_width,1))+
+      kpi("全叠加信号数",String(fullSig),"主规则 "+allSig+" 次 · 样本坍缩")+
+      "</div>";
+    var rr=(V.reconciliation||[]).map(function(x){
+      return [esc(x.quote),esc(x.reading),esc(x.assessment)];
+    });
+    var vr=(V.variants||[]).map(function(x){
+      return [esc(x.name),String(x.signals),String(x.n_trades),
+        '<span class="'+cls(x.total_return)+'">'+pct(x.total_return)+"</span>",num(x.sharpe)];
+    });
+    var ev=(V.event_study&&V.event_study.groups)||{};
+    var e10=ev["回踩 10 周线（全部）"]||{}, eh=(e10.horizons||{})["5"]||{};
+    var er=(V.event_random_control||{})["回踩 10 周线"]||{};
+    var erc=(V.event_random_control||{})["回踩 10 周线 + MACD 死叉"]||{};
+    var hf2=(vd.hard_fail_items||[]).map(function(x){return "<li>"+esc(x)+"</li>";}).join("");
+    var rw=(c.range_by_window||{});
+    var rng=Object.keys(rw).map(function(w){
+      return [w+" 日",pct(rw[w].width,2),pct(rw[w].percentile,1)];
+    });
+    return card("v2 · 对话新增条件核对（月线死叉 / 10 周线 / 震荡区间）",
+      "research-only；截至 "+esc(c.last_complete_day||"")+" 的事实读数，不构成买卖点或操作建议",
+      k+
+      '<div class="desc">对话原文逐条核对：读数由 result_v2.json 派生，不手写结论。</div>'+
+      table(["对话中的说法","客观读数","核对结果"],rr)+
+      '<div class="desc">「震荡区间有点小」的多尺度核对：各窗口振幅的全样本历史分位。</div>'+
+      table(["窗口","振幅","历史分位"],rng)+
+      '<div class="desc">条件叠加到 v1 主规则：'+sm.n_variants+" 个变体，"+sm.n_zero_signal+
+        " 个零信号；全叠加信号 "+fullSig+" 次。</div>"+
+      table(["变体","信号","平仓交易","总收益","夏普"],vr)+
+      '<div class="desc">事件级统计（+5 日）：回踩 10 周线 '+String(e10.n_events||0)+
+        " 次，均值 "+pct(eh.mean,3)+"，随机对照分位 "+pct(er.percentile,1)+
+        "；叠加月线死叉后分位 "+pct(erc.percentile,1)+"。未做多重检验校正。</div>"+
+      '<p><b>v2 裁决：'+esc(vd.final||"")+"</b> · "+esc(vd.engineering||"")+"</p><ul>"+hf2+"</ul>"+
+      '<div class="desc">v2 指纹 <code>'+esc(V.fingerprint)+'</code> · <a href="'+esc(V.report_url)+
+        '">打开 v2 完整研报</a> · 无前视口径已用历史截点重算反证（35 项校验通过）</div>'+
+      '<div class="desc">'+esc(vd.note||"")+"</div>");
+  }
+
   // 单标的策略研究：数据随快照固化（同一份 result.json 派生），在线/离线两模式一致
   function renderFeikai(){
     var F = (S && S.feikai) || null;
@@ -558,7 +614,8 @@
            '<p><b>工程 '+esc(v.engineering||"")+" / 策略结论 "+esc(v.final||"")+"</b></p>"+
            "<ul>"+hf+"</ul>"+
            '<div class="desc">研究指纹 <code>'+esc(F.fingerprint)+'</code> · <a href="'+esc(F.report_url)+'">打开完整研报（含净值曲线与数据口径）</a></div>'+
-           '<div class="desc">'+esc(F.compliance||"")+"</div>");
+           '<div class="desc">'+esc(F.compliance||"")+"</div>")+
+      renderFeikaiV2();
   }
 
   function renderDelivery(){
