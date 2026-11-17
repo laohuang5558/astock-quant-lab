@@ -1,0 +1,122 @@
+{
+  "ok": true,
+  "generated_at": "2026-11-17T14:40:43",
+  "health_url": "http://127.0.0.1:8000/quant/api/v1/health",
+  "contract_prefix": "/quant/api/v1",
+  "positive_evidence": {
+    "http_status": 200,
+    "response_json": {
+      "data": {
+        "data_files": {
+          "equity.csv": true,
+          "result.json": true,
+          "trades.csv": true
+        },
+        "engine": "quantlab (research-only)",
+        "note": "数据来自本地真实产物；此服务不含实盘下单与券商接口",
+        "result_generated_at": "2026-11-16 19:38:14",
+        "service": "astock-quant-platform",
+        "status": "ok",
+        "version": "0.1.0-mvp"
+      },
+      "metric_fingerprint": "e819989972c994d1",
+      "ok": true,
+      "request_id": "153ac4f028744bb0",
+      "server_time": "2026-11-17T14:40:43"
+    }
+  },
+  "negative_controls": {
+    "/api/health": {
+      "http_status": 404
+    },
+    "nonexistent_path": {
+      "http_status": 404
+    }
+  },
+  "checks": [
+    {
+      "name": "openapi.yaml 可读取",
+      "passed": true,
+      "detail": "contracts\\openapi.yaml, 11596 B"
+    },
+    {
+      "name": "契约含本地 server base",
+      "passed": true,
+      "detail": "local_servers=['http://127.0.0.1:8000/quant/api/v1']"
+    },
+    {
+      "name": "契约 server URL 可拆为 origin + 前缀",
+      "passed": true,
+      "detail": "server_url=http://127.0.0.1:8000/quant/api/v1"
+    },
+    {
+      "name": "契约定义 GET /health",
+      "passed": true,
+      "detail": "paths=['/agents/tasks', '/agents/tasks/{task_id}/callback', '/audit/{run_id}/opinions', '/audit/{run_id}/panels', '/deliveries', '/health', '/preregistration', '/reports/{run_id}/audit', '/reports/{run_id}/design', '/runs', '/runs/{run_id}', '/runs/{run_id}/equity', '/runs/{run_id}/factors', '/runs/{run_id}/metrics', '/runs/{run_id}/overfit', '/runs/{run_id}/quality-gate', '/runs/{run_id}/result', '/runs/{run_id}/status', '/runs/{run_id}/trades', '/verify/{run_id}']"
+    },
+    {
+      "name": "后端 API_PREFIX 与契约前缀一致",
+      "passed": true,
+      "detail": "impl='/quant/api/v1' contract='/quant/api/v1'"
+    },
+    {
+      "name": "健康检查 HTTP 200",
+      "passed": true,
+      "detail": "url=http://127.0.0.1:8000/quant/api/v1/health status=200 error=None"
+    },
+    {
+      "name": "响应含 application/json 且可解析",
+      "passed": true,
+      "detail": "ctype=application/json bytes=509"
+    },
+    {
+      "name": "响应信封 ok=true",
+      "passed": true,
+      "detail": "ok=True"
+    },
+    {
+      "name": "运行态 data.status=ok",
+      "passed": true,
+      "detail": "status='ok'"
+    },
+    {
+      "name": "服务标识为 astock-quant-platform",
+      "passed": true,
+      "detail": "service='astock-quant-platform'"
+    },
+    {
+      "name": "引擎标注 research-only",
+      "passed": true,
+      "detail": "engine='quantlab (research-only)'"
+    },
+    {
+      "name": "三项真实产物均可达",
+      "passed": true,
+      "detail": "data_files={'equity.csv': True, 'result.json': True, 'trades.csv': True}"
+    },
+    {
+      "name": "信封携带 metric_fingerprint",
+      "passed": true,
+      "detail": "metric_fingerprint='e819989972c994d1'"
+    },
+    {
+      "name": "信封携带 request_id 与 server_time",
+      "passed": true,
+      "detail": "request_id='153ac4f028744bb0' server_time='2026-11-17T14:40:43'"
+    },
+    {
+      "name": "反向对照：/api/health 返回 404（该路径不是本服务健康端点）",
+      "passed": true,
+      "detail": "url=http://127.0.0.1:8000/api/health status=404"
+    },
+    {
+      "name": "反向对照：不存在路径返回 404（校验器非恒真）",
+      "passed": true,
+      "detail": "status=404"
+    }
+  ],
+  "passed": 16,
+  "total": 16,
+  "issues": [],
+  "note": "健康端点必须拼接契约 servers 前缀；/api/health 返回 404，不得作为运行态判据。"
+}

@@ -6,8 +6,8 @@
 
 | 形态 | 地址 | 能力 | 前置条件 |
 |---|---|---|---|
-| **本机完整版** | `http://127.0.0.1:8000/` | 全部 8 个面板 + 真实任务触发（单测 / 一致性校验 / 契约校验 / 完整回测）+ 报告在线读取 | Python 3.13 + Flask（已在 `requirements.txt`） |
-| **内网静态版** | `http://192.168.2.203:8888/workbuddy/astock-quant-lab/app/` | 全部 8 个面板、真实读数、图表与筛选；**任务触发禁用** | 仅需浏览器；零后端、零 CDN、零数据库 |
+| **本机完整版** | `http://127.0.0.1:8000/` | 全部 9 个面板 + 真实任务触发（单测 / 一致性校验 / 契约校验 / 完整回测）+ 报告在线读取 | Python 3.13 + Flask（已在 `requirements.txt`） |
+| **内网静态版** | `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/index.html` | 全部 9 个面板、真实读数、图表与筛选；**任务触发禁用** | 仅需浏览器；零后端、零 CDN、零数据库 |
 
 内网服务器 `192.168.2.203` 目前只提供 SeaweedFS Filer 匿名静态托管与既有 `/ai` 服务，**没有可用的 Python 执行通道与数据库账号**（SSH 需凭据、本机无免密密钥）。因此静态版把 `output/result.json` 与净值序列固化为 `snapshot.js`，前端自动切换到「离线只读快照」模式并在界面上明确标注。这不是功能缺失的伪装：任务按钮在静态版被禁用且给出原因，完整交互在本机版可用。
 
@@ -29,11 +29,15 @@ python apps/api/server.py               # 监听 127.0.0.1:8000
 
 前缀 `/quant/api/v1`，完整定义在 `contracts/openapi.yaml`。统一响应信封包含 `ok` / `data` / `request_id` / `server_time` / `metric_fingerprint`；触发类操作（`POST /runs`、`POST /deliveries`、审核与回调）必须带 `Idempotency-Key`（幂等键），重复提交返回同一任务。
 
+**路径拼接口径**：契约 `servers[].url` 已含前缀，表中的路径需接在它后面。健康检查的完整 URL 是
+`http://127.0.0.1:8000/quant/api/v1/health`（HTTP 200，返回上述信封）。
+注意 `/api/health` **不是**本服务的端点，实测返回 404；不得把它当作运行态判据。该偏差已由 `scripts/validate_health.py` 用正向双证据（状态码 + 响应 JSON）与两条反向对照（`/api/health` 与不存在路径均为 404）固化。
+
 主要操作：
 
-| 方法 | 路径 | 说明 |
+| 方法 | 路径（接在前缀后） | 说明 |
 |---|---|---|
-| GET | `/health` | 服务状态与三项真实产物可达性 |
+| GET | `/health` → 完整 URL `http://127.0.0.1:8000/quant/api/v1/health` | 服务状态与三项真实产物可达性 |
 | GET / POST | `/runs` | 列出运行 / 创建真实复现任务 |
 | GET | `/runs/{id}/result` `/metrics` `/equity` `/trades` `/factors` `/overfit` `/quality-gate` | 逐项真实读数 |
 | GET | `/verify/{id}` | 一致性校验与架构契约校验结果 |
@@ -51,11 +55,14 @@ python apps/api/server.py               # 监听 127.0.0.1:8000
 python -m quantlab selftest                 # 引擎 25 项单测
 python -m quantlab verify --render           # 数值指纹与文档一致性
 python scripts/validate_contracts.py        # OpenAPI 引用 / DDL 静态校验
+python scripts/validate_health.py           # 服务已启动后：健康端点 16 项（含 2 条反向对照）
 python scripts/smoke_api.py                  # 服务已启动后：41 项接口冒烟（含真实任务执行）
 node scripts/validate_web_render.js         # 前端在线 + 离线双路径渲染校验
 ```
 
-`validate_web_render.js` 用最小 DOM 桩在 Node 里真实执行前端内联脚本，分别以「在线」和「离线」两种模式渲染 8 个面板，逐项断言关键真实读数出现、无装载失败、无 JS 异常。它带反向对照：把 base_url 指向未监听端口时应输出 `WEB_RENDER: FAIL`，证明校验器不是恒真。
+`validate_health.py` 从契约解析 server base 与路径后实测健康检查，断言 HTTP 200、响应信封、三项产物可达与 `metric_fingerprint`，并要求 `/api/health` 与不存在路径返回 404。把 `--base` 指向未监听端口时应输出 `HEALTH_CHECK: FAIL`，证明校验器不是恒真。
+
+`validate_web_render.js` 用最小 DOM 桩在 Node 里真实执行前端内联脚本，分别以「在线」和「离线」两种模式渲染 9 个面板，逐项断言关键真实读数出现、无装载失败、无 JS 异常。它带反向对照：把 base_url 指向未监听端口时应输出 `WEB_RENDER: FAIL`，证明校验器不是恒真。
 
 ## 五、目录落点
 
@@ -66,8 +73,10 @@ apps/web/snapshot.js              离线数据快照（由脚本生成，勿手�
 scripts/build_web_snapshot.py     快照生成
 scripts/smoke_api.py              接口冒烟测试
 scripts/validate_web_render.js    前端渲染校验
+scripts/validate_health.py        健康端点确定性校验（含反向对照）
 output/api_smoke.json             冒烟测试机读结果
 output/web_render_check.json      渲染校验机读结果
+output/health_check.json          健康端点双证据机读结果
 ```
 
 实现栈取舍：架构文档的目标栈是 FastAPI + Vue 3 + Vite。本机环境当前只有 Flask、没有 Node 构建链与 PostgreSQL 账号，因此 MVP 用 Flask + 原生 JS 实现**同一份接口契约**，保证现在就能跑通；M2 阶段替换实现栈时接口、目录职责与前端数据模型不变。数据库 `db/schema.sql` 已建模，但本版本不接线（无账号），所有读数走本地真实产物，不使用占位数据。

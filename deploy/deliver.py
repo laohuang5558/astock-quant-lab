@@ -94,9 +94,15 @@ def load_context() -> dict:
     fk2 = json.loads((fk_dir / "result_v2.json").read_text(encoding="utf-8"))
     fk2v = json.loads((fk_dir / "validate_v2.json").read_text(encoding="utf-8"))
     fk2_fp = json.loads((fk_dir / "report_fingerprint_v2.json").read_text(encoding="utf-8"))["fingerprint"]
+    health = json.loads((ROOT / "output" / "health_check.json").read_text(encoding="utf-8"))
     full_stack_signals = next(v["signals"] for v in fk2["filter_variants"]
                               if v["name"].startswith("v2-9"))
     return {
+        "health_ok": health["ok"],
+        "health_validation": f"{health['passed']}/{health['total']}",
+        "health_url": health["health_url"],
+        "health_status": health["positive_evidence"]["http_status"],
+        "health_negative": health["negative_controls"]["/api/health"]["http_status"],
         "fk2_fingerprint": fk2_fp,
         "fk2_ok": fk2v["ok"],
         "fk2_validation": f"{fk2v['passed']}/{fk2v['checks']}",
@@ -193,7 +199,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 
 <h2>三、核心验收入口</h2>
 <div class="card"><ul>
-<li><strong><a href="app/index.html">运行中的系统控制台（可交互，8 个面板）</a></strong> —— 静态离线版，零 CDN、零数据库；本机完整版见 <code>docs/RUNNING.md</code></li>
+<li><strong><a href="app/index.html">运行中的系统控制台（可交互，9 个面板）</a></strong> —— 静态离线版，零 CDN、零数据库；本机完整版见 <code>docs/RUNNING.md</code></li>
 <li><a href="astock-quant-design-report.html">可视化设计报告（ECharts，含指纹）</a></li>
 <li><a href="astock-quant-audit-report.html">专家团联合审核报告</a></li>
 <li><strong><a href="feikai-kdj-report.html">飞凯材料 KDJ 择时策略研报（单标的研究）</a></strong> —— 规则形式化、前提检验、7 笔交易、样本内外、随机对照与裁决</li>
@@ -220,7 +226,8 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <li><strong><a href="app/index.html">打开系统控制台</a></strong>：9 个可交互面板（总览 / 净值与回撤 / 因子检验 / 过拟合四件套 / 质量门 / 风险定级 / 任务与接口 / 交付物 / 飞凯材料策略），数值指纹与 <code>result.json</code> 绑定。</li>
 <li>本页为<strong>静态离线版</strong>：零 CDN、零数据库、零后端进程，浏览器直接运行；页面会显示「离线只读快照」标识，任务触发按钮禁用并说明原因。</li>
 <li><strong>本机完整版</strong>按 <a href="RUNNING.md">RUNNING.md</a> 启动 <code>python apps/api/server.py</code> 后访问 <code>http://127.0.0.1:8000/</code>，可真实触发单测、一致性校验、契约校验与完整回测；接口前缀 <code>/quant/api/v1</code> 与 <a href="openapi.yaml">OpenAPI 契约</a> 一致。</li>
-<li>校验证据：<a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（36 项 / 9 面板）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验（18 项 / 9 面板）</a> · <a href="feikai-kdj-validate.json">单标的策略研究校验（{ctx['fk_validation']}）</a>。</li>
+<li><strong>健康检查完整 URL</strong>：<code>{ctx['health_url']}</code>（HTTP {ctx['health_status']}，返回 JSON 含 <code>ok</code> / <code>data.status</code> / <code>metric_fingerprint</code>）。契约中 <code>/health</code> 需拼接 <code>servers[].url</code> 前缀；<code>/api/health</code> 实测 HTTP {ctx['health_negative']}，<strong>不是</strong>本服务健康端点，不得作为运行态判据。</li>
+<li>校验证据：<a href="health_check.json">健康端点确定性校验（{ctx['health_validation']}，含 2 条反向对照）</a> · <a href="api_smoke.json">接口冒烟结果（41 项）</a> · <a href="web_render_check.json">前端双路径渲染校验（9 面板）</a> · <a href="web_render_remote_check.json">已发布内网页面远端拉取渲染校验</a> · <a href="feikai-kdj-validate.json">单标的策略研究校验（{ctx['fk_validation']}）</a>。</li>
 <li>实现栈取舍：目标栈 FastAPI + Vue 3；当前 MVP 用 Flask + 原生 JS 实现同一接口契约，接口与前端数据模型不变，替换实现栈不影响契约。内网服务器无可用的 Python 执行通道与数据库账号，故暂不接线 <a href="schema.sql">DDL</a>。</li>
 </ul></div>
 
@@ -288,6 +295,7 @@ def main() -> int:
         ("verify.json", ROOT / "output" / "verify.json"),
         ("README.md", ROOT / "README.md"),
         ("RUNNING.md", ROOT / "docs" / "RUNNING.md"),
+        ("health_check.json", ROOT / "output" / "health_check.json"),
         ("api_smoke.json", ROOT / "output" / "api_smoke.json"),
         ("web_render_check.json", ROOT / "output" / "web_render_check.json"),
         ("web_render_remote_check.json", ROOT / "output" / "web_render_remote_check.json"),
@@ -322,6 +330,7 @@ def main() -> int:
         "交付物 sha256 与 MANIFEST.json 逐项一致，且每个 URL 已回读校验",
         "可运行系统：app/index.html 控制台 9 个面板可打开，离线快照读数与 result.json 一致",
         "后端接口冒烟 41/41 通过（含真实执行 25 项单测、幂等键、冻结保护）",
+        f"健康端点确定性校验 {ctx['health_validation']} 通过：{ctx['health_url']} → HTTP {ctx['health_status']} + 响应 JSON 双证据；/api/health 反向对照 HTTP {ctx['health_negative']}",
         "前端在线 + 离线双路径渲染校验通过（9 面板 / 36 项，关键读数与指纹一致）",
         "飞凯材料策略研究：确定性校验通过（等价性断言、逐笔账目闭合、指纹、反向对照）",
         "飞凯材料研报与 result.json 绑定，结论不放行；研究不构成投资建议",
@@ -392,6 +401,7 @@ def main() -> int:
         "python scripts/validate_contracts.py",
         "python scripts/build_web_snapshot.py",
         "python apps/api/server.py   # 浏览器打开 http://127.0.0.1:8000/",
+        "python scripts/validate_health.py   # http://127.0.0.1:8000/quant/api/v1/health",
         "python scripts/smoke_api.py",
         "node scripts/validate_web_render.js",
         "```", "",

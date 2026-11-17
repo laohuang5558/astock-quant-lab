@@ -1,14 +1,14 @@
 {
   "delivery_target": "192.168.2.203",
   "base_url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/",
-  "generated_at": "2026-11-17T13:26:05",
+  "generated_at": "2026-11-17T14:41:22",
   "metric_fingerprint": "e819989972c994d1",
   "final_verdict": "不放行",
   "files": [
     {
       "name": "astock-quant-lab-v3.tar.gz",
-      "size": 2676444,
-      "sha256": "42b8eacffdd355dd155f924a0e3f7a67d71853385149b825071255bd4f0379b5",
+      "size": 2681102,
+      "sha256": "3d875355ec0922b30e81985d6f3b7351b13713b3e651846ca080297a2be8ca54",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz",
       "put_status": 201,
       "verified": true
@@ -64,7 +64,7 @@
     {
       "name": "contracts_check.json",
       "size": 1100,
-      "sha256": "a1108e8230e7b1fc99bc5bb6df4037f5ddae2b7b703013979065f11c2d4a2f86",
+      "sha256": "9203c4197292895b84c62fb7bab316a25ed26df5066e0bcd1c27340aedc19bd4",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/contracts_check.json",
       "put_status": 201,
       "verified": true
@@ -72,7 +72,7 @@
     {
       "name": "verify.json",
       "size": 354,
-      "sha256": "755c2bb29b239faca9e1c7b6257d3af600fb63cef1264c19674d1341ef7fd09f",
+      "sha256": "00e41dc864b22b04c7f387916796e08aebb49b108713bf5d7b4099b7b9b8c0e5",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/verify.json",
       "put_status": 201,
       "verified": true
@@ -87,9 +87,17 @@
     },
     {
       "name": "RUNNING.md",
-      "size": 6251,
-      "sha256": "bb06212d64f0ff485611245885055d0f9998530ba6ed0dd898da893a449ca93a",
+      "size": 7416,
+      "sha256": "b082b1d33241acc669dc8ce0912f89bb578dddbe3ed891b80ca132b84f205d6c",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/RUNNING.md",
+      "put_status": 201,
+      "verified": true
+    },
+    {
+      "name": "health_check.json",
+      "size": 4043,
+      "sha256": "31f5e39e8e801526e92175d2c56bdf00e4c9b5503e7f22f3f7cc7e0813f41501",
+      "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/health_check.json",
       "put_status": 201,
       "verified": true
     },
@@ -104,7 +112,7 @@
     {
       "name": "web_render_check.json",
       "size": 280,
-      "sha256": "83885271f994add86bd7fd3ee7732163bfa7a6f9bf63a00f98e912dda782c6ac",
+      "sha256": "059dddb9a5caa24ef059a780276eb27bc45fd2874003c5e3baf3639b610b20ac",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/web_render_check.json",
       "put_status": 201,
       "verified": true
@@ -199,16 +207,16 @@
     },
     {
       "name": "index.html",
-      "size": 18196,
-      "sha256": "085103c46d6785986f050f7b88cfee49f6e3618979462a75101285f5d6a57fe9",
+      "size": 19075,
+      "sha256": "238e1e870db2d53231e99cc94e0e5faddcd8c88b9df75a6b742f76e21f8aacd5",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html",
       "put_status": 201,
       "verified": true
     },
     {
       "name": "ACCEPTANCE.md",
-      "size": 7797,
-      "sha256": "6ab2ede9bd78e29cd473c3e3259c701520e8bb4af8b777538b89d1bf2a7240f9",
+      "size": 8231,
+      "sha256": "0fb1e9810555edecfda6d19527a7e1b7becc331ed2e6c4826b55ee83c0d2e3b9",
       "url": "http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/ACCEPTANCE.md",
       "put_status": 201,
       "verified": true

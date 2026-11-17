@@ -4,7 +4,7 @@
  * 用最小 DOM 桩真实执行 apps/web/index.html 的内联 JS，分别验证：
  *   online  —— location.port=8000，fetch 指向真实后端服务，走 API 数据链路
  *   offline —— location.port=8888，走内联快照（内网静态托管形态）
- * 断言：8 个面板均产出内容、关键真实读数出现、无 JS 运行时异常、无装载失败。
+ * 断言：9 个面板均产出内容、关键真实读数出现、无 JS 运行时异常、无装载失败。
  *
  * 用法：node scripts/validate_web_render.js [base_url]
  */
