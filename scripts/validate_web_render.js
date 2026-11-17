@@ -124,6 +124,13 @@ async function runMode(mode) {
         && (T8.findings || []).length >= 32);
   check(`[${mode}] 第 10 面板绑定 F4 双口径真实胜率（防恒真：两读数必须不同）`,
         dw != null && fw != null && dw !== fw && t8.includes(dw.toFixed(3)) && t8.includes(fw.toFixed(3)));
+  // 统计增强：历史表现分布画像须真实绑定区间均值，默认/全样本两口径读数必须不同（防恒真）
+  const dAvg = ads.default && ads.default.fwd60 && ads.default.fwd60.avg;
+  const fAvg = ads.full && ads.full.fwd60 && ads.full.fwd60.avg;
+  check(`[${mode}] 第 10 面板含历史表现画像且区间均值双口径绑定（防恒真）`,
+        t8.includes('历史表现分布画像') && t8.includes('口径敏感性') && t8.includes('正向样本占比')
+        && dAvg != null && fAvg != null && dAvg !== fAvg
+        && t8.includes((dAvg*100).toFixed(2)+'%') && t8.includes((fAvg*100).toFixed(2)+'%'));
   check(`[${mode}] 第 10 面板绑定 F5 口径与规整层验收计数`,
         !!T8.fwd_formula && t8.includes(T8.fwd_formula) && !!T8.adapter
         && t8.includes(String(T8.adapter.passed)) && t8.includes('关键实测读数'));
@@ -163,6 +170,8 @@ async function runT8094Negative() {
         !err && html2.includes('降级') && html2.includes('缺少 t8094 快照字段'));
   check('[对照] 降级态不展示任何推断胜率读数',
         !html2.includes('0.906') && !html2.includes('0.596') && !html2.includes('90.6%'));
+  check('[对照] 降级态不残留历史画像区间均值',
+        !html2.includes('历史表现分布画像') && !html2.includes('21.32%') && !html2.includes('5.51%'));
 }
 
 (async () => {

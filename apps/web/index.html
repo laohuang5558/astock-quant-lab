@@ -731,6 +731,33 @@
     var c4 = card("关键实测读数", "全部取自 t8094 快照字段，前端不生成、不外推任何数值",
       table(["读数","实测值"], kv));
 
+    /* 统计增强：条件触发后 · 历史表现分布画像。
+       全部字段来自 t8094 快照，前端只做中性统计呈现，不外推、不生成任何数值。
+       措辞纪律：只用「正向样本占比 / 区间均值 / 口径敏感性」等统计语言，不含操作导向表述。 */
+    function avgv(o,h){ return (o && o[h] && o[h].avg!=null) ? o[h].avg : null; }
+    function pairN(h){ return (fh[h] && fh[h].n!=null) ? fh[h].n : null; }
+    var WLABEL={"fwd5":"5 个交易日","fwd20":"20 个交易日","fwd60":"60 个交易日"};
+    var profileRows = H.map(function(h){
+      var wd=win(d,h), wf=win(f,h);
+      var delta=(wd!=null && wf!=null)?(wd-wf)*100:null;
+      return [esc(WLABEL[h]), esc(pairN(h)),
+              num(wd,3)+" / "+pct(avgv(d,h),2),
+              num(wf,3)+" / "+pct(avgv(f,h),2),
+              num(delta,1)];
+    });
+    var cProfile = card("条件触发后 · 历史表现分布画像（历史统计，非前瞻判断）",
+      "同一条件、同一标的，仅取样口径不同；每格为「正向样本占比 / 区间均值」，配对复算样本来自 fwd_per_horizon",
+      table(["观察窗口","配对样本量","默认口径（最近 60 次）","全样本口径（515 次）","占比差·百分点"], profileRows)+
+      '<div class="alert" style="margin-top:12px"><span class="pill">口径敏感性</span><div>'+
+      '<b>同一历史统计，仅因取样口径不同，60 交易日正向样本占比从 '+pct(win(d,H[2]),1)+
+      ' 变为 '+pct(win(f,H[2]),1)+'，差 '+num((win(d,H[2])-win(f,H[2]))*100,0)+
+      ' 个百分点；默认口径配对样本仅 '+esc(pairN(H[2]))+'，全样本聚合 '+esc((f[H[2]]||{}).n)+'。</b>'+
+      '样本量相差约一个数量级，读数对口径高度敏感；此处并置而不取单一值。</div></div>'+
+      '<div class="hint" style="margin-top:10px"><b>读法与边界：</b>以上为条件触发后的历史分布统计，'+
+      '「正向样本占比」指 fwd 为正的样本比例，<b>不是对未来结果的判断</b>；样本为有条件存活样本，'+
+      '未计成本、无样本外拆分、无多重检验校正。strategy_verdict 恒 <b>not_approved</b>。'+
+      '复算口径 '+esc(T.fwd_formula||"")+'，T+1 开盘口径 max_abs_err &lt; 5e-5，可独立核验。</div>');
+
     var c5 = card("合规与边界", "",
       '<div class="row">'+tag("research-only")+tag("P0=F2")+"</div>"+
       '<ul class="clean"><li>不构成投资建议；不荐股、不代操作；个股代码均为历史统计样例，非推荐。</li>'+
@@ -739,7 +766,7 @@
       '<div class="hint" style="margin-top:10px">完整评估见 <a href="'+esc(T.report_url||"terminal8094-report.html")+
         '">独立零 CDN 验收报告页</a>（同目录相对链接，无外部依赖）。</div>');
 
-    box.innerHTML = c0+c1+c2+c3+c4+c5;
+    box.innerHTML = c0+c1+c2+cProfile+c3+c4+c5;
   }
 
   function renderDelivery(){

@@ -175,7 +175,7 @@
   <nav class="toc" aria-label="章节导航">
     <a href="#s1">① 取证基线</a><a href="#s2">② 八类改造点</a>
     <a href="#f1">F1</a><a href="#f2">F2</a><a href="#f3">F3</a><a href="#f4">F4</a>
-    <a href="#f5">F5</a><a href="#f6">F6</a><a href="#f7">F7</a><a href="#f8">F8</a>
+    <a href="#f5">F5</a><a href="#s7">历史画像</a><a href="#f6">F6</a><a href="#f7">F7</a><a href="#f8">F8</a>
     <a href="#s3">③ F2 前后对照</a><a href="#s4">④ P95 延迟</a><a href="#s5">⑤ 改造方案</a><a href="#s6">⑥ 零 CDN 自检</a>
   </nav>
 
@@ -312,6 +312,28 @@ T+1 开盘口径   : 最大绝对误差 4.996e-05 （仅 4 位小数舍入）
         历史窗口与元数据不一致，且 <code>days=999999</code> 仍只返回 2,000 根。
       </div>
       <div class="hint" style="margin-top:10px">早期用收盘到收盘口径自算时多处相差 0.7~1.2 个百分点（如 2026-11-10 自算 -0.0566 / 接口 -0.0448，差 -0.0118），曾疑似算错；全样本反推确认是<b>口径不同</b>，非计算错误。</div>
+    </section>
+
+    <section class="card" id="s7">
+      <h2>条件触发后 · 历史表现分布画像（历史统计，非前瞻判断）</h2>
+      <div class="desc">把 F4 双口径与 F5 可复算读数合并为一张画像：同一条件、同一标的，仅取样口径不同。每格为「正向样本占比 / 区间均值」；数值取自 <code>output/terminal_8094_probe.json</code> 的 <code>agg_probe</code> 与 <code>fwd_recompute</code>，本页不生成、不外推。</div>
+      <div class="tw"><table>
+        <thead><tr><th>观察窗口</th><th class="num">配对样本量</th><th class="num">默认口径（最近 60 次）</th><th class="num">全样本口径（515 次）</th><th class="num">占比差·百分点</th></tr></thead>
+        <tbody>
+          <tr><td>fwd5 · 5 个交易日</td><td class="num">413</td><td class="num">0.661 / 0.89%</td><td class="num">0.518 / 0.17%</td><td class="num">14.3</td></tr>
+          <tr><td>fwd20 · 20 个交易日</td><td class="num">412</td><td class="num">0.707 / 8.15%</td><td class="num">0.474 / 1.88%</td><td class="num">23.3</td></tr>
+          <tr><td><b>fwd60 · 60 个交易日</b></td><td class="num"><b>407</b></td><td class="num"><b>0.906 / 21.32%</b></td><td class="num"><b>0.596 / 5.51%</b></td><td class="num"><b>31.0</b></td></tr>
+        </tbody>
+      </table></div>
+      <div class="boundary" style="margin-top:12px">
+        <b>口径敏感性：</b>同一历史统计，仅因取样口径不同，60 交易日正向样本占比从 90.6% 变为 59.6%，差 31 个百分点；默认口径配对样本 53，全样本 508，相差约一个数量级。读数对口径高度敏感，此处并置而不取单一值。
+      </div>
+      <div class="facts" style="margin-top:10px">
+        <div class="fact"><div class="lbl">统计含义</div><div class="txt">正向样本占比 = 该窗口 fwd 为正的样本数 / 配对样本数；区间均值 = fwd 算术平均。二者均为<b>回看口径</b>，不是对未来结果的判断。</div></div>
+        <div class="fact"><div class="lbl">可复算性</div><div class="txt">复算口径 <code>fwd_h = close[t+h] / open[t+1] - 1</code>；T+1 开盘口径最大绝对误差 &lt; 5e-5。配对样本 413 / 412 / 407，可独立核验。</div></div>
+        <div class="fact"><div class="lbl">边界</div><div class="txt">有条件存活样本；未计成本、无样本外拆分、无多重检验校正。<code>strategy_verdict</code> 恒 <code>not_approved</code>。</div></div>
+      </div>
+      <div class="hint" style="margin-top:10px">本画像与第一屏结论同源；本平台研究报告对同一主题的裁决为「工程可复跑 / 策略级结论不放行」。</div>
     </section>
 
     <section class="card fcard" id="f6" data-f="F6">
