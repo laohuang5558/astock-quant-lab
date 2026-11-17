@@ -9,7 +9,9 @@
 | **本机完整版** | `http://127.0.0.1:8000/` | 全部 9 个面板 + 真实任务触发（单测 / 一致性校验 / 契约校验 / 完整回测）+ 报告在线读取 | Python 3.13 + Flask（已在 `requirements.txt`） |
 | **内网静态版** | `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/index.html` | 全部 9 个面板、真实读数、图表与筛选；**任务触发禁用** | 仅需浏览器；零后端、零 CDN、零数据库 |
 
-内网服务器 `192.168.2.203` 目前只提供 SeaweedFS Filer 匿名静态托管与既有 `/ai` 服务，**没有可用的 Python 执行通道与数据库账号**（SSH 需凭据、本机无免密密钥）。因此静态版把 `output/result.json` 与净值序列固化为 `snapshot.js`，前端自动切换到「离线只读快照」模式并在界面上明确标注。这不是功能缺失的伪装：任务按钮在静态版被禁用且给出原因，完整交互在本机版可用。
+内网服务器 `192.168.2.203` 上，本平台当前只使用 SeaweedFS Filer 匿名静态托管。**本机没有 SSH 免密凭据、也没有可直接使用的数据库账号**，所以没有部署常驻后端；静态版把 `output/result.json` 与净值序列固化为 `snapshot.js`，前端自动切换到「离线只读快照」模式并在界面上明确标注。这不是功能缺失的伪装：任务按钮在静态版被禁用且给出原因，完整交互在本机版可用。
+
+> **内网执行通道的精确口径（2026-11-17 实测补充）**：服务器上另有既有服务 `http://192.168.2.203:8093/`（Agent 工作台），它的 `ops` 角色带 `run_shell`、`dataops` 角色带 `sql_query`，任务事件日志可见真实命令与 SQL 返回；PG 16.15 上 pgvector 已装。即「内网完全无法执行 Python / 无数据库账号」的说法不准确，应修正为「本机无直接凭据，但存在经既有工作台间接执行的通道」。该通道需 `POST /api/tasks` 触发 LLM 任务，属对既有系统的写操作，本平台默认只读探测（`scripts/validate_workbench.py`）、不擅自建任务、不借它建表或改配置。详见 `docs/PLATFORM_ARCHITECTURE.md` 第 0.1.1 节。
 
 ## 二、本机启动
 
@@ -56,6 +58,7 @@ python -m quantlab selftest                 # 引擎 25 项单测
 python -m quantlab verify --render           # 数值指纹与文档一致性
 python scripts/validate_contracts.py        # OpenAPI 引用 / DDL 静态校验
 python scripts/validate_health.py           # 服务已启动后：健康端点 16 项（含 2 条反向对照）
+python scripts/validate_workbench.py        # 内网可达时：既有 Agent 工作台只读探测 13 项（不触发 LLM 任务）
 python scripts/smoke_api.py                  # 服务已启动后：41 项接口冒烟（含真实任务执行）
 node scripts/validate_web_render.js         # 前端在线 + 离线双路径渲染校验
 ```
@@ -74,12 +77,14 @@ scripts/build_web_snapshot.py     快照生成
 scripts/smoke_api.py              接口冒烟测试
 scripts/validate_web_render.js    前端渲染校验
 scripts/validate_health.py        健康端点确定性校验（含反向对照）
+scripts/validate_workbench.py    内网既有 Agent 工作台只读探测（仅 GET）
 output/api_smoke.json             冒烟测试机读结果
 output/web_render_check.json      渲染校验机读结果
 output/health_check.json          健康端点双证据机读结果
+output/workbench_probe.json       工作台只读探测机读结果
 ```
 
-实现栈取舍：架构文档的目标栈是 FastAPI + Vue 3 + Vite。本机环境当前只有 Flask、没有 Node 构建链与 PostgreSQL 账号，因此 MVP 用 Flask + 原生 JS 实现**同一份接口契约**，保证现在就能跑通；M2 阶段替换实现栈时接口、目录职责与前端数据模型不变。数据库 `db/schema.sql` 已建模，但本版本不接线（无账号），所有读数走本地真实产物，不使用占位数据。
+实现栈取舍：架构文档的目标栈是 FastAPI + Vue 3 + Vite。本机环境当前只有 Flask、没有 Node 构建链与 PostgreSQL 账号，因此 MVP 用 Flask + 原生 JS 实现**同一份接口契约**，保证现在就能跑通；M2 阶段替换实现栈时接口、目录职责与前端数据模型不变。数据库 `db/schema.sql` 已建模，但本版本不接线（本机无直接账号；内网虽经 `:8093` 工作台存在间接执行通道，其已知账号权限不足且需向既有服务提交 LLM 任务，未获授权不接线），所有读数走本地真实产物，不使用占位数据。
 
 ### 单标的研究复跑（v1 / v2）
 

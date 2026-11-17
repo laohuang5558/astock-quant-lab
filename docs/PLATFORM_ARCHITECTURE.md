@@ -19,8 +19,25 @@
 | SeaweedFS Filer | 8888 | 在线，匿名 PUT/GET 可用 | 交付物与 HTML 报告的对象存储（当前交付通道） |
 | SeaweedFS S3 | 8333 | 匿名访问 403，需签名 | 仅作为后续可选通道，当前不依赖 |
 | 宝塔面板 | 19008 | 在线 | 运维侧，平台不直接依赖 |
+| **Agent 工作台（既有）** | **8093** | 在线，OpenAPI 3.1，nginx + FastAPI | **2026-11-17 新增实测**：4 角色任务队列，`ops` 带 `run_shell`、`dataops` 带 `sql_query`，历史任务事件含真实工具返回 → 内网存在**间接**执行通道；见 0.1.1 |
 | SSH | 22 | OpenSSH 8.9p1 Ubuntu，需公钥或密码 | 本机无可用免密凭据；本次交付走 Filer，不阻塞 |
-| MySQL 8 / Redis | 3306 / 6379 | 探测为关闭 | **不纳入架构**；队列用 PostgreSQL 表实现 |
+| MySQL 8 / Redis | 3306 / 6379 | 早期探测为关闭；2026-11-17 工作台巡检记录为监听 `0.0.0.0` | **不纳入架构**；队列用 PostgreSQL 表实现。两次探测口径不一致，已登记，不据此改设计 |
+
+### 0.1.1 Agent 工作台 `:8093` 实测补充（2026-11-17）
+
+用户给出 `http://192.168.2.203:8093/`。只读探测结论（`scripts/validate_workbench.py`，13/13，产物 `output/workbench_probe.json`）：
+
+- 该服务是**内网既有的「Agent 工作台 · ai-server」**，不是本平台部署的页面；反向对照：本平台专属 `/quant/api/v1/health` 在 8093 返回 404。
+- 契约有 `/api/health`、`/api/env`、`/api/roles`、`/api/tasks`(GET/POST)、`/api/tasks/{tid}/events`、`/api/tasks/{tid}/stream`、`/api/artifacts/{aid}/preview` 等；模型 `deepseek-chat`，产物落在 `/opt/agent-workbench/output`。
+- 角色 `research` / `dataops` / `writer` / `ops`；`ops` 含 `run_shell`，`dataops` 含 `sql_query`。任务事件日志留有真实 `sql_query` / `run_shell` 返回（如 `SELECT ... FROM pg_database`、`uptime/free -h`），不是占位描述。
+- 工作台既有巡检产物记载：PostgreSQL 16.15、连接身份 `ai_db` / `data_agent`、`public.embeddings` 含 `vector(512)` 与 `embeddings_hnsw_idx`（**pgvector 已装**）、但该账号对 `embeddings` 无 SELECT 权限、`count(*)` 被拒。
+
+**对硬约束的影响（精确表述，不夸大）**：
+
+1. 旧结论「内网服务器无可用的 Python 执行通道与数据库账号」**不再准确**，须修正为：**本机仍无 SSH 免密凭据、无直接数据库凭据；但内网存在经 Agent 工作台任务队列间接执行 shell 与 SQL 的通道**。二者是不同层面的事实，不可互相替代。
+2. 该通道由**既有服务**提供、需经 `POST /api/tasks` 创建 LLM 任务来触发，属于对既有系统的写操作。本平台**默认只读调用**，不擅自创建任务、不借它建表、不改 nginx 与 `/ai/*` 契约；M1 的 `quant` schema 与 M2 的常驻后端仍须由运维侧授权后独立部署。
+3. `vector(512)` 与 `schema.sql` 的列宽一致，pgvector 依赖不再是未知项；但账号权限不足（`data_agent` 连既有表都无 SELECT），**DDL 可执行性仍未经本平台验证**，M0 验收门「DDL 在 PG 16 执行通过」不放宽。
+4. 该工作台的角色/任务/事件/产物模型可作为 M4 编排的**候选宿主调研对象**，但它的任务模型没有 `run_id / stage / role / attempt` 幂等键与证据校验，不能替代本设计的 `agent_task` / `agent_message` 表；是否复用须经 M4 独立评估。
 
 ### 0.2 现有工程状态
 
@@ -356,9 +373,9 @@ ai-quant-platform/                    # 平台化 monorepo（由现有 astock-qu
 **并行关系**：M1 与 M2 可并行；M3 依赖 M2 的契约稳定；M4 依赖 M2/M3；M5 是闸门，任何阶段未过门不得进入。
 
 **风险登记**：
-- PostgreSQL 5432 可达但账号未知 → M1 前需由运维提供只读/读写账号；本设计不假设凭据，DDL 先在本地校验语法。
-- SSH 无免密凭据 → 交付走 Filer :8888；nginx 配置变更需运维侧执行 `deploy/nginx/quant.conf`。
-- `/ai/*` 为既有服务 → 平台只读调用，不改变其契约；不可用时 `/health` 降级为 `degraded`，不阻断回测主链路。
+- PostgreSQL 5432 可达、pgvector 已装（`vector(512)` + HNSW 见 0.1.1）；但已知的 `data_agent` 账号连 `public.embeddings` 都无 SELECT 权限，**无可用于 `quant` schema 建表的授权凭据** → M1 前仍需运维提供专用读写账号；DDL 先在本地校验语法，M0 验收门不放宽。
+- SSH 无免密凭据 → 交付走 Filer :8888；nginx 配置变更需运维侧执行 `deploy/nginx/quant.conf`。`:8093` 工作台虽能间接执行 shell，但触发它需向既有服务提交 LLM 任务，本平台不借此绕过授权。
+- `/ai/*` 与 `:8093` 均为既有服务 → 平台只读调用，不改变其契约；不可用时 `/health` 降级为 `degraded`，不阻断回测主链路。
 - 质量门当前为「策略结论不放行」→ 平台上线**不解除**该判定，前端必须显式展示硬否决项。
 
 ---

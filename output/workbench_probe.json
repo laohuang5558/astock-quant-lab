@@ -1,0 +1,173 @@
+{
+  "ok": true,
+  "generated_at": "2026-11-17T15:31:16",
+  "base": "http://192.168.2.203:8093",
+  "service": "Agent 工作台 · ai-server（内网既有服务，非本平台部署）",
+  "method": "只读 GET；未调用 POST /api/tasks 或任何写端点",
+  "evidence": {
+    "health": {
+      "ok": true,
+      "model": "deepseek-chat",
+      "llm": true,
+      "output": "/opt/agent-workbench/output",
+      "tasks": 8
+    },
+    "env": {
+      "host": "ai-server",
+      "model": "deepseek-chat",
+      "uptime": "up 2 weeks, 3 days, 22 hours, 18 minutes",
+      "now": "2026-11-17 15:31:15"
+    },
+    "roles": {
+      "research": [
+        "http_get",
+        "sql_query",
+        "read_file",
+        "list_dir",
+        "write_file",
+        "run_shell"
+      ],
+      "dataops": [
+        "sql_query",
+        "run_shell",
+        "read_file",
+        "list_dir",
+        "write_file"
+      ],
+      "writer": [
+        "read_file",
+        "list_dir",
+        "http_get",
+        "write_file"
+      ],
+      "ops": [
+        "run_shell",
+        "read_file",
+        "list_dir",
+        "write_file"
+      ]
+    },
+    "openapi_paths": [
+      "/",
+      "/api/artifacts",
+      "/api/artifacts/{aid}",
+      "/api/artifacts/{aid}/download",
+      "/api/artifacts/{aid}/preview",
+      "/api/env",
+      "/api/health",
+      "/api/roles",
+      "/api/tasks",
+      "/api/tasks/{tid}",
+      "/api/tasks/{tid}/cancel",
+      "/api/tasks/{tid}/events",
+      "/api/tasks/{tid}/stream"
+    ],
+    "n_tasks": 8,
+    "task_statuses": [
+      "done",
+      "done",
+      "done",
+      "done",
+      "done",
+      "done",
+      "done",
+      "done"
+    ],
+    "tool_result_names": [
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "run_shell",
+      "write_file"
+    ],
+    "evidence_task_id": "c0b663928e81",
+    "n_artifacts": 4
+  },
+  "negative_controls": {
+    "/quant/api/v1/health": {
+      "http_status": 404
+    },
+    "nonexistent_path": {
+      "http_status": 404
+    }
+  },
+  "checks": [
+    {
+      "name": "工作台健康检查 HTTP 200",
+      "passed": true,
+      "detail": "url=http://192.168.2.203:8093/api/health status=200 error=None"
+    },
+    {
+      "name": "健康检查 ok=true 且标注 LLM 可用",
+      "passed": true,
+      "detail": "health={'ok': True, 'model': 'deepseek-chat', 'llm': True, 'output': '/opt/agent-workbench/output', 'tasks': 8}"
+    },
+    {
+      "name": "环境读数返回主机与模型",
+      "passed": true,
+      "detail": "host='ai-server' model='deepseek-chat' status=200"
+    },
+    {
+      "name": "角色集合为 research/dataops/writer/ops",
+      "passed": true,
+      "detail": "roles=['dataops', 'ops', 'research', 'writer']"
+    },
+    {
+      "name": "ops 角色具备 run_shell（服务器命令执行工具）",
+      "passed": true,
+      "detail": "ops_tools=['run_shell', 'read_file', 'list_dir', 'write_file']"
+    },
+    {
+      "name": "dataops 角色具备 sql_query（数据库查询工具）",
+      "passed": true,
+      "detail": "dataops_tools=['sql_query', 'run_shell', 'read_file', 'list_dir', 'write_file']"
+    },
+    {
+      "name": "契约含任务/事件/流/产物路径",
+      "passed": true,
+      "detail": "missing=[] declared=['/', '/api/artifacts', '/api/artifacts/{aid}', '/api/artifacts/{aid}/download', '/api/artifacts/{aid}/preview', '/api/env', '/api/health', '/api/roles', '/api/tasks', '/api/tasks/{tid}', '/api/tasks/{tid}/cancel', '/api/tasks/{tid}/events', '/api/tasks/{tid}/stream']"
+    },
+    {
+      "name": "任务创建为 POST（本脚本明确不调用）",
+      "passed": true,
+      "detail": "/api/tasks methods=['get', 'post']；本校验全程仅 GET"
+    },
+    {
+      "name": "任务列表可读且含已完成任务",
+      "passed": true,
+      "detail": "n_tasks=8 statuses=['done', 'done', 'done', 'done', 'done', 'done', 'done', 'done']"
+    },
+    {
+      "name": "历史任务事件含工具真实返回（非占位描述）",
+      "passed": true,
+      "detail": "task=c0b663928e81 tool_results=['run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell', 'run_shell']"
+    },
+    {
+      "name": "产物清单可读",
+      "passed": true,
+      "detail": "status=200 n=4"
+    },
+    {
+      "name": "反向对照：本平台健康端点在 8093 返回 404（两服务不同）",
+      "passed": true,
+      "detail": "status=404"
+    },
+    {
+      "name": "反向对照：不存在路径返回 404（校验器非恒真）",
+      "passed": true,
+      "detail": "status=404"
+    }
+  ],
+  "passed": 13,
+  "total": 13,
+  "issues": [],
+  "scope_note": "本校验只证明『内网存在经 Agent 工作台间接执行 shell/SQL 的通道』及『该服务不是本平台』。数据库账号、pgvector 与端口清单来自工作台 2026-11-17 既有巡检产物文本，不是本脚本直连 PostgreSQL 取得；脚本不假设凭据、不建表、不改既有服务配置。"
+}
