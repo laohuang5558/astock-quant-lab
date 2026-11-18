@@ -1,7 +1,7 @@
 # 工程交付验收清单
 
 - 交付目标：内网 ai-server `192.168.2.203`，Filer `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/`
-- 交付时间：2026-11-18 15:22:51
+- 交付时间：2026-11-18 15:37:23
 - 数值指纹：`e819989972c994d1`
 - 质量门：工程 可交付 / 策略结论 不放行 / 最终 不放行
 - 验收入口：http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html
@@ -40,7 +40,7 @@
 
 | 文件 | 字节 | SHA-256 | 回读校验 |
 |---|---|---|---|
-| [`astock-quant-lab-v3.tar.gz`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz) | 2,964,273 | `a2c197b9b3169ee2e9f24fe8b66af8c49dff94582999d7e99a897aa4cfc737b3` | 通过 |
+| [`astock-quant-lab-v3.tar.gz`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz) | 2,964,593 | `ac96dcefddb17f5ef7f4f300f23b4edef1c11fcfd75dd8cf36e4e777c0538dbe` | 通过 |
 | [`astock-quant-design-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-design-report.html) | 52,918 | `e0b4360bc1fc53c94f4db6febf741959e69db84cffe66bb1edb75d79eaf7b243` | 通过 |
 | [`astock-quant-audit-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-audit-report.html) | 29,589 | `ecc5be9a80c033bdc12c10e3a5f30a2d93af5660edb4ff797081d4f69abbd0b6` | 通过 |
 | [`astock-quant-designer.zip`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-designer.zip) | 27,131 | `7ccd76c4c0d14fb8fa24a0b0374eb35c79dfa5acab7aad00d52a7ba993f2b29f` | 通过 |
@@ -74,7 +74,7 @@
 | [`feikai-kdj-v2-validate.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-v2-validate.json) | 3,697 | `57159c66c924542e37e544886cab59afe3d34346259060a8c98ea21de4272835` | 通过 |
 | [`app/index.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/index.html) | 53,430 | `191df9bf4681ec787f38d988cccb8a2416d05da26983cc9e0ce6e8e2693395c3` | 通过 |
 | [`app/snapshot.js`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/snapshot.js) | 154,489 | `ac2762081b8be1734d3db8a24e7ddc45deb656c45e23bd972d69635b90fb60c7` | 通过 |
-| [`r8094-clean.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/r8094-clean.html) | 24,239 | `8e577cd1caa94b1a7f1b72a4cc6a908247ec0731553d89a093f35f9dda9fbd6a` | 通过 |
+| [`r8094-clean.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/r8094-clean.html) | 24,989 | `95a91e141ad74331c7c63155dda2f6e0a7d594871795784bed2bae94d8cb8e9c` | 通过 |
 | [`r8094_clean_snapshot.js`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/r8094_clean_snapshot.js) | 141,627 | `2439c6b83ad7b0437134f714fbd9b09f75c6d5dbe2397dd476f3b99735545d12` | 通过 |
 
 ## 复现命令

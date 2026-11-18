@@ -337,8 +337,11 @@ footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);color:v
   /* ---------- 数据可信度 ---------- */
   (function(){
     var sm=D.strategy_meta, jm=D.joint.meta, dbsj=D.picks[1].data;
+    var bars=(D.stock.daily||[]).concat(D.stock.weekly||[]);
+    var badOhlc=bars.filter(function(r){return !(r.l<=Math.min(r.o,r.c) && r.h>=Math.max(r.o,r.c));}).length;
     var h='<div class="sh"><h2>数据可信度</h2><span class="desc">把限制条件摆到台面上，而不是藏在页脚</span></div>';
     var rows=[
+      ["上游 OHLC 区间一致性",tagBox("异常",badOhlc>0,"warn"),badOhlc+" / "+bars.length+" 根不满足 low≤open,close≤high；本页仅用收盘与均线，不据此着色"],
       ["策略样例数据源",tagBox("合成数据",sm.ready.data_source==="synthetic_demo","warn"),esc(sm.ready.data_source_note||"")],
       ["联合评分未来信息",tagBox("存在",jm.pit_risk===1,"warn"),esc(jm.pit_note||"")],
       ["策略校验",tagBox("通过",sm.validate.fail===0,"ok"),"checked "+sm.validate.checked+" · fail "+sm.validate.fail],
