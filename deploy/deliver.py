@@ -234,6 +234,7 @@ li{{margin:6px 0}} a{{color:#0969da;text-decoration:none}} a:hover{{text-decorat
 <li><strong><a href="feikai-kdj-report.html">飞凯材料 KDJ 择时策略研报（单标的研究）</a></strong> —— 规则形式化、前提检验、7 笔交易、样本内外、随机对照与裁决</li>
 <li><strong><a href="feikai-kdj-v2-report.html">飞凯材料研究 v2（对话新增条件核对）</a></strong> —— 月线死叉 / 回踩 10 周线 / 震荡区间的形式化、逐条读数核对、无前视反证与条件叠加检验</li>
 <li><strong><a href="terminal8094-report.html">:8094 改造评估报告（只读规整层）</a></strong> —— 上游取证 {ctx['t8094_probe_validation']}、规整层 {ctx['t8094_adapter_validation']}（L1 {ctx['t8094_l1']} + L2 {ctx['t8094_l2_mode']} {ctx['t8094_l2']}）、反向对照 {ctx['t8094_nc']}、契约 6 path</li>
+<li><strong><a href="r8094-clean.html">:8094 研究版终端（PM 修正前端）</a></strong> —— 清爽分区：全市场分布 / 双口径信号画像 / 因子有效性 / 个股技术状态 / 条件筛选 / 数据可信度；数据取自 8094 只读接口，剔除实盘持仓与操作导向内容</li>
 <li><a href="PLATFORM_ARCHITECTURE.md">平台化技术架构（前后端 / 数据库 / 智能体编排 / 接口契约 / 目录 / 里程碑）</a></li>
 <li><a href="openapi.yaml">接口契约 OpenAPI 3.1</a> · <a href="schema.sql">数据库 DDL</a> · <a href="ACCEPTANCE.md">验收清单文本版</a></li>
 <li><a href="astock-quant-lab-v3.tar.gz">完整工程交付包（tar.gz）</a> · <a href="astock-quant-designer.zip">WorkBuddy 技能包</a></li>
@@ -366,6 +367,9 @@ def main() -> int:
         # 可运行的静态系统（零依赖，Filer 子目录直接托管）
         ("app/index.html", ROOT / "apps" / "web" / "index.html"),
         ("app/snapshot.js", ROOT / "apps" / "web" / "snapshot.js"),
+        # :8094 研究版修正前端：清爽信息架构，剔除实盘持仓/操作导向，数据来自 8094 只读接口
+        ("r8094-clean.html", ROOT / "apps" / "web" / "r8094-clean.html"),
+        ("r8094_clean_snapshot.js", ROOT / "apps" / "web" / "r8094_clean_snapshot.js"),
     ]
 
     checks = [

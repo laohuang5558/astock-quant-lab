@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A股条件研究终端 · 精简版</title>
+<style>
+:root{
+  --bg:#0b0e13; --panel:#121720; --panel2:#171d28; --line:#222a38; --line2:#2c3646;
+  --txt:#e6eaf0; --dim:#8b95a5; --dim2:#5f6875; --amber:#c8952f;
+  --pos:#e0484a; --neg:#2faa72; --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;line-height:1.5}
+.wrap{max-width:1500px;margin:0 auto;padding:0 22px 60px}
+header{display:flex;align-items:center;gap:14px;padding:18px 0 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:17px;font-weight:600;letter-spacing:.3px}
+header .sub{color:var(--dim);font-size:12px}
+header .spacer{flex:1}
+.pill{font-family:var(--mono);font-size:11px;border:1px solid var(--amber);color:var(--amber);padding:3px 9px;border-radius:3px}
+.pill.data{border-color:var(--line2);color:var(--dim)}
+.disclaimer{margin:12px 0 0;border:1px solid var(--line2);border-left:3px solid var(--amber);background:var(--panel);
+  padding:9px 13px;color:var(--dim);font-size:12px;border-radius:2px}
+.layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px;margin-top:20px}
+nav{position:sticky;top:14px;align-self:start}
+nav .grp{color:var(--dim2);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 7px;padding-left:10px}
+nav a{display:block;padding:9px 12px;color:var(--dim);text-decoration:none;border-radius:5px;font-size:13px;margin-bottom:2px;border:1px solid transparent}
+nav a:hover{background:var(--panel);color:var(--txt)}
+nav a.on{background:var(--panel2);color:var(--txt);border-color:var(--line2)}
+main{min-width:0}
+section{display:none}
+section.on{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.sh{display:flex;align-items:baseline;gap:12px;margin:2px 0 14px;flex-wrap:wrap}
+.sh h2{font-size:16px;font-weight:600}
+.sh .desc{color:var(--dim);font-size:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:16px 18px;margin-bottom:16px}
+.card h3{font-size:13px;font-weight:600;margin-bottom:3px;color:var(--txt)}
+.card .hint{color:var(--dim2);font-size:11.5px;margin-bottom:13px;line-height:1.6}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:13px 14px}
+.kpi .k{color:var(--dim);font-size:11.5px;margin-bottom:6px}
+.kpi .v{font-family:var(--mono);font-size:21px;font-weight:600}
+.kpi .u{color:var(--dim2);font-size:11px;margin-left:3px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:var(--mono)}
+th,td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--dim);font-weight:500;font-size:11.5px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--panel)}
+td.l,th.l{text-align:left;font-family:var(--sans)}
+tbody tr:hover{background:var(--panel2)}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.zero{color:var(--dim)}
+.tag{display:inline-block;font-family:var(--sans);font-size:10.5px;padding:1px 6px;border-radius:3px;background:var(--panel2);border:1px solid var(--line2);color:var(--dim)}
+.tag.warn{color:var(--amber);border-color:var(--amber)}
+.tag.ok{color:var(--neg);border-color:var(--neg)}
+.scroll{max-height:520px;overflow:auto}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+.bar{height:7px;background:var(--panel2);border-radius:4px;overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;background:var(--amber);border-radius:4px}
+.note{color:var(--dim);font-size:11.5px;line-height:1.7;margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim2);font-size:11.5px;line-height:1.8}
+.chart{width:100%;height:260px;display:block}
+.legend{display:flex;gap:16px;color:var(--dim);font-size:11.5px;margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:2px;vertical-align:middle;margin-right:5px}
+@media(max-width:880px){.layout{grid-template-columns:1fr}nav{position:static;display:flex;flex-wrap:wrap;gap:4px}nav .grp{display:none}nav a{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>A股条件研究终端</h1>
+    <span class="sub" id="h-sub">—</span>
+    <span class="spacer"></span>
+    <span class="pill" id="h-pill">research-only</span>
+    <span class="pill data" id="h-date">—</span>
+  </header>
+  <div class="disclaimer" id="disclaimer">—</div>
+
+  <div class="layout">
+    <nav id="nav">
+      <div class="grp">概览</div>
+      <a href="#overview" class="on">总览</a>
+      <a href="#universe">全市场分布</a>
+      <div class="grp">研究</div>
+      <a href="#signals">历史信号画像</a>
+      <a href="#factors">因子有效性</a>
+      <a href="#stock">个股技术状态</a>
+      <div class="grp">筛选</div>
+      <a href="#pick">条件筛选</a>
+      <a href="#scan">分组清单</a>
+      <div class="grp">数据治理</div>
+      <a href="#quality">数据可信度</a>
+      <a href="#about">口径说明</a>
+    </nav>
+    <main id="main">
+      <section id="overview" class="on"></section>
+      <section id="universe"></section>
+      <section id="signals"></section>
+      <section id="factors"></section>
+      <section id="stock"></section>
+      <section id="pick"></section>
+      <section id="scan"></section>
+      <section id="quality"></section>
+      <section id="about"></section>
+    </main>
+  </div>
+
+  <footer id="footer"></footer>
+</div>
+<script src="r8094_clean_snapshot.js"></script>
+<script>
+(function(){
+  "use strict";
+  var D = window.__R8094_CLEAN__;
+  var $ = function(s){ return document.querySelector(s); };
+
+  if(!D){
+    document.getElementById("main").innerHTML =
+      '<div class="card"><h3>数据未加载</h3><div class="hint">r8094_clean_snapshot.js 缺失。请先运行 scripts/build_8094_clean_snapshot.py 生成快照。</div></div>';
+    return;
+  }
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function pct(v,d){ if(v==null||isNaN(v))return "—"; return (v*100).toFixed(d==null?1:d)+"%"; }
+  function num(v,d){ if(v==null||isNaN(v))return "—"; return Number(v).toFixed(d==null?2:d); }
+  function cls(v){ return v>0?"pos":(v<0?"neg":"zero"); }
+  function card(title,hint,body){ return '<div class="card"><h3>'+title+'</h3>'+
+    (hint?'<div class="hint">'+hint+'</div>':'')+body+'</div>'; }
+  function table(cols,rows,scroll){
+    var body = Array.isArray(rows) ? rows.join('') : String(rows || '');
+    var h='<table><thead><tr>'+cols.map(function(c){return '<th'+(c.l?' class="l"':'')+'>'+c.t+'</th>';}).join('')+'</tr></thead><tbody>'
+      +body+'</tbody></table>';
+    return scroll?'<div class="scroll">'+h+'</div>':h;
+  }
+
+  var src=D.source, uni=D.universe.stats;
+  $("#h-sub").textContent="全 A "+src.n_stocks.toLocaleString()+" 只 · "+(src.n_days/10000).toFixed(0)+" 万条日线 · 截至 "+src.latest_date;
+  $("#h-date").textContent="数据 "+src.latest_date;
+  $("#disclaimer").textContent=D.disclaimer;
+  $("#footer").innerHTML="数据来源：8094 只读接口原样固化（"+esc(src.base)+"，v"+esc(src.version)+"）。"
+    +"全部为历史统计描述，前向收益口径 "+esc(src.fwd_method)+"。<br>"
+    +"本页为独立研究视图，只保留研究统计内容；不含账户持仓与操作导向字段。<br>"
+    +"快照生成 "+esc(D.generated_at)+"。不构成投资建议。";
+
+  /* ---------- 总览 ---------- */
+  (function(){
+    var sm=D.strategy_meta, fl=D.factorlib, jm=D.joint.meta;
+    var kpis=[
+      ["研究标的",src.n_stocks.toLocaleString(),"只"],
+      ["日线样本",(src.n_days/10000).toFixed(0),"万条"],
+      ["因子库",fl.n_factors,"个"],
+      ["有效性因子",D.factor_meta.factors.length,"个"],
+      ["策略样例",sm.info.strategies,"个"],
+      ["联合评分样本",jm.rows.toLocaleString(),"行"]
+    ];
+    var h='<div class="sh"><h2>总览</h2><span class="desc">8094 研究数据的一屏概览 · 全部读数来自真实接口</span></div>';
+    h+='<div class="kpis">'+kpis.map(function(k){
+      return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+k[1]+'<span class="u">'+k[2]+'</span></div></div>';
+    }).join('')+'</div>';
+
+    h+=card("三个值得先看的事实","研究版把数据可信度放在最显眼的位置，而不是藏在页脚",
+      '<div class="grid2">'
+      +'<div>'+tagBox("策略样例为合成数据",sm.ready.data_source==="synthetic_demo","warn")
+        +'<div class="note">strategy-factor 的 data_source = <b>'+esc(sm.ready.data_source)+'</b>。'
+        +esc(sm.ready.data_source_note||"")+'</div></div>'
+      +'<div>'+tagBox("联合评分含未来信息",jm.pit_risk===1,"warn")
+        +'<div class="note">'+esc(jm.pit_note||"")+'。该表仅供链路验证，不视为可用样本。</div></div>'
+      +'</div>');
+
+    h+=card("本页包含什么","按研究主题分区，一屏一个主题，不再把所有板块堆在一页",
+      '<div class="grid2">'
+      +'<div><b>全市场分布</b>：G1–G11 条件组当日横截面命中数<br>'
+      +'<b>历史信号画像</b>：双口径（最近窗口 vs 全样本）前向表现<br>'
+      +'<b>因子有效性</b>：IC / ICIR / 分层收益</div>'
+      +'<div><b>个股技术状态</b>：均线、KDJ、MACD、振幅分位、K 线<br>'
+      +'<b>条件筛选 / 分组清单</b>：公式选股与分组扫描<br>'
+      +'<b>数据可信度</b>：合成数据、未来信息、过滤计数</div></div>');
+    $("#overview").innerHTML=h;
+  })();
+  function tagBox(label,bad,kind){
+    return '<span class="tag '+(bad?(kind||"warn"):"ok")+'">'+(bad?"需留意":"正常")+'</span> <b>'+esc(label)+'</b>';
+  }
+
+  /* ---------- 全市场分布 ---------- */
+  (function(){
+    var defs=[["G1","回踩"],["G2","回踩+死叉"],["G3","回踩+非死叉"],["G4","回踩+宽幅"],
+      ["G5","回踩+窄幅"],["G7","回踩+非死叉+窄幅"],["G11","非死叉+窄幅"]];
+    var rows=defs.map(function(d){
+      var v=uni[d[0]]; var ratio=uni.total?v/uni.total:0;
+      return '<tr><td class="l">'+d[0]+'</td><td class="l">'+d[1]+'</td><td>'+v+'</td>'
+        +'<td style="width:130px"><div class="bar"><i style="width:'+Math.max(1,ratio*100*8)+'%"></i></div></td>'
+        +'<td>'+pct(ratio,2)+'</td></tr>';
+    });
+    var h='<div class="sh"><h2>全市场分布</h2><span class="desc">当日横截面 · '+esc(src.latest_date)+'</span></div>';
+    h+=card("条件组命中数","G* 是「当日全市场横截面命中只数」，与「单股历史命中次数」维度不同，禁止相等判定",
+      table([{t:"组",l:1},{t:"条件",l:1},{t:"命中只数"},{t:"占比"},{t:"占全市场"}],rows));
+    h+=card("样本口径","分母为全市场 "+uni.total+" 只；过滤计数见「数据可信度」分区",
+      '<div class="kpis">'
+      +[["死叉",uni.dead_n,"只"],["回踩",uni.touch_n,"只"],["窄幅",uni.narrow_n,"只"],["全市场",uni.total,"只"]]
+        .map(function(k){return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v">'+k[1]+'<span class="u">'+k[2]+'</span></div></div>';}).join('')
+      +'</div>');
+    $("#universe").innerHTML=h;
+  })();
+
+  /* ---------- 历史信号画像 ---------- */
+  (function(){
+    var s=D.signal;
+    var hs=["fwd5","fwd20","fwd60"], labels={fwd5:"后 5 日",fwd20:"后 20 日",fwd60:"后 60 日"};
+    var rows=hs.map(function(h){
+      var a=s.agg[h], b=s.agg_all[h];
+      return '<tr><td class="l">'+labels[h]+'</td>'
+        +'<td>'+num(a.avg*100,2)+'%</td><td>'+pct(a.win,0)+'</td><td>'+a.n+'</td>'
+        +'<td>'+num(b.avg*100,2)+'%</td><td>'+pct(b.win,0)+'</td><td>'+b.n+'</td>'
+        +'<td class="'+(b.win-a.win>0?"pos":"neg")+'">'+((b.win-a.win)*100).toFixed(1)+'pp</td></tr>';
+    }).join('');
+    var h='<div class="sh"><h2>历史信号画像</h2><span class="desc">'+esc(s.name)+' · '+esc(s.group)+' · 命中 '+s.total+' 次</span></div>';
+    h+=card("双口径前向表现","同一信号两种取样口径并置：agg=最近窗口（"+s.window.limit+" 次），agg_all=全部历史命中。窗口口径样本少、读数通常偏高，不单独使用。",
+      table([{t:"持有窗口",l:1},{t:"窗口均值"},{t:"窗口占比"},{t:"n"},{t:"全样本均值"},{t:"全样本占比"},{t:"n"},{t:"占比差"}],rows));
+    h+='<div class="note">'+esc(s.window.truncation_rule)+'。'+esc(src.fwd_method)+'。占比=区间收益为正的样本比例，均值=算术平均；均为历史统计描述。</div>';
+
+    var items=s.items;
+    var irows=items.map(function(x){
+      return '<tr><td class="l">'+esc(x.date)+'</td><td>'+num(x.close,2)+'</td>'
+        +['fwd5','fwd20','fwd60'].map(function(k){return '<td class="'+cls(x[k])+'">'+(x[k]==null?"—":num(x[k]*100,2)+"%")+'</td>';}).join('')
+        +'<td>'+(x.amp_pct==null?"—":pct(x.amp_pct,1))+'</td></tr>';
+    }).join('');
+    h+=card("逐次命中明细","按命中日期倒序 · 最近 "+items.length+" 次 · 红=区间为正、绿=区间为负",
+      table([{t:"命中日",l:1},{t:"收盘"},{t:"后 5 日"},{t:"后 20 日"},{t:"后 60 日"},{t:"振幅分位"}],irows,true));
+    $("#signals").innerHTML=h;
+  })();
+
+  /* ---------- 因子有效性 ---------- */
+  (function(){
+    var fs=D.factor_meta.factors;
+    var rows=fs.slice().map(function(f){
+      return '<tr><td class="l">'+esc(f.name)+'</td><td class="'+cls(f.ic)+'">'+num(f.ic,4)+'</td>'
+        +'<td>'+num(f.icir,3)+'</td><td>'+num(f.t,1)+'</td><td>'+pct(f.pos_ratio,1)+'</td>'
+        +'<td class="'+cls(f.L1)+'">'+num(f.L1*100,2)+'%</td>'
+        +'<td class="'+cls(f.L5)+'">'+num(f.L5*100,2)+'%</td>'
+        +'<td class="'+cls(f.ls)+'">'+num(f.ls*100,2)+'%</td></tr>';
+    }).join('');
+    var h='<div class="sh"><h2>因子有效性</h2><span class="desc">标签 '+esc(D.factor_meta.label)+' · '+esc(D.factor_meta.date_from)+' 至 '+esc(D.factor_meta.date_to)+'</span></div>';
+    h+=card("全样本 IC / 分层收益",D.factor_meta.n_all.toLocaleString()+" 条观测 · 按 |IC| 排序。IC=因子与前向收益的横截面秩相关；L1–L5=按因子值分层后的平均前向收益；LS=多空层差。均为历史统计。",
+      table([{t:"因子",l:1},{t:"IC"},{t:"ICIR"},{t:"t 值"},{t:"正 IC 占比"},{t:"L1"},{t:"L5"},{t:"LS"}],rows,true));
+    var fl=D.factorlib;
+    h+=card("因子库就绪状态",esc(fl.dict_version)+" · 覆盖 "+fl.n_factors+" 个因子 / "+fl.partitions+" 个分区",
+      '<div class="kpis">'
+      +[["校验状态",fl.ready.validate_status,""],["覆盖标的",fl.ready.n_codes.toLocaleString(),"只"],
+        ["字段数",fl.ready.cols,"列"],["最新分区",fl.ready.latest_trade_date,""]]
+        .map(function(k){return '<div class="kpi"><div class="k">'+k[0]+'</div><div class="v" style="font-size:16px">'+esc(k[1])+'<span class="u">'+k[2]+'</span></div></div>';}).join('')
+      +'</div>');
+    $("#factors").innerHTML=h;
+  })();
+
+  /* ---------- 个股技术状态 ---------- */
+  (function(){
+    var st=D.stock, c=st.cond, fc=D.fscore;
+    function kv(k,v,extra){return '<tr><td class="l">'+k+'</td><td>'+v+'</td>'+(extra?'<td class="l">'+extra+'</td>':'')+'</tr>';}
+    var condRows=[
+      kv("最新收盘",num(st.last.close,2)+" <span class='"+(st.last.chg>0?"pos":"neg")+"'>"+pct(st.last.chg,2)+"</span>",esc(st.last.date)),
+      kv("月线 MACD",c.dead?"死叉":"非死叉"),
+      kv("回踩 10 周线",c.touch?"成立":"不成立"),
+      kv("距 10 周均线",pct(c.dist,2)),
+      kv("20 日振幅分位",pct(c.amp_pct,1)+(c.narrow?" · 窄幅":(c.wide?" · 宽幅":""))),
+      kv("周线 KDJ · J",num(st.weekly.length?st.weekly[st.weekly.length-1].J:null,2)),
+      kv("因子综合分位",num(fc.score_pct,0)+" / 100 <span class='tag'>"+esc(fc.grade)+"</span>",fc.date+" · "+fc.cov+"/"+fc.n_factors+" 因子有效")
+    ].join('');
+    var h='<div class="sh"><h2>个股技术状态</h2><span class="desc">'+esc(st.name)+' · '+esc(st.code)+' · '+esc(st.market)+'</span></div>';
+    h+='<div class="grid2">';
+    h+=card("当前条件与因子位置","技术指标的历史状态描述 · 不含任何操作导向字段",table([{t:"项目",l:1},{t:"读数"},{t:"备注",l:1}],condRows));
+    var g=st.groups, grows=Object.keys(g).map(function(k){return kv(k,g[k]?"命中":"未命中");}).join('');
+    h+=card("条件组归属","当前交易日该股所在的分组（布尔）",table([{t:"组",l:1},{t:"状态"}],grows));
+    h+='</div>';
+
+    var kline=st.weekly.slice(-120);
+    h+=card("周线收盘与 10 周均线","最近 120 周 · 前复权",klineSvg(kline));
+
+    var ar=fc.all.map(function(f){
+      return '<tr><td class="l">'+esc(f.cn||f.factor)+'</td><td class="'+cls(f.ic)+'">'+num(f.ic,4)+'</td>'
+        +'<td>'+num(f.w,4)+'</td><td>'+num(f.pct,1)+'</td><td>'+num(f.contrib,2)+'</td></tr>';
+    }).join('');
+    h+=card("因子分项","当日截面分位（0–100），按各因子全样本 |IC| 加权 · "+esc(fc.basis),
+      table([{t:"因子",l:1},{t:"IC"},{t:"权重"},{t:"当日分位"},{t:"贡献"}],ar,true));
+    $("#stock").innerHTML=h;
+  })();
+
+  function klineSvg(rows){
+    if(!rows.length) return '<div class="hint">无数据</div>';
+    var W=1100,H=250,PL=8,PR=8,PT=10,PB=24;
+    var cs=rows.map(function(r){return r.c;}), ms=rows.map(function(r){return r.ma;});
+    var mn=Math.min.apply(null,cs.concat(ms)), mx=Math.max.apply(null,cs.concat(ms));
+    if(mx===mn){mx=mn+1;mn=mn-1;}
+    var x=function(i){return PL+i*(W-PL-PR)/(rows.length-1||1);};
+    var y=function(v){return PT+(mx-v)/(mx-mn)*(H-PT-PB);};
+    var p1=cs.map(function(v,i){return (i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1);}).join(" ");
+    var p2=ms.map(function(v,i){return (i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1);}).join(" ");
+    return '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
+      +'<path d="'+p2+'" fill="none" stroke="#c8952f" stroke-width="1.2"/>'
+      +'<path d="'+p1+'" fill="none" stroke="#e6eaf0" stroke-width="1.4"/>'
+      +'<text x="'+PL+'" y="'+(H-6)+'" fill="#5f6875" font-size="10">'+esc(rows[0].wk)+'</text>'
+      +'<text x="'+(W-PR)+'" y="'+(H-6)+'" fill="#5f6875" font-size="10" text-anchor="end">'+esc(rows[rows.length-1].wk)+'</text>'
+      +'</svg><div class="legend"><span><i style="background:#e6eaf0"></i>周收盘</span><span><i style="background:#c8952f"></i>10 周均线</span></div>';
+  }
+
+  /* ---------- 条件筛选 ---------- */
+  (function(){
+    var h='<div class="sh"><h2>条件筛选</h2><span class="desc">公式选股 · 数据日 '+esc(D.picks[0].data.date)+'</span></div>';
+    D.picks.forEach(function(p){
+      var d=p.data, items=d.items||[];
+      var rows=items.map(function(x){
+        return '<tr><td class="l">'+esc(x.code)+'</td><td class="l">'+esc(x.name)+'</td>'
+          +'<td>'+num(x.close,2)+'</td><td class="'+cls(x.dist)+'">'+pct(x.dist,2)+'</td>'
+          +'<td>'+num(x.adx,1)+'</td><td class="'+cls(x.cci_w)+'">'+num(x.cci_w,1)+'</td>'
+          +'<td class="'+cls(x.cci_m)+'">'+num(x.cci_m,1)+'</td><td>'+pct(x.amp_pct,1)+'</td></tr>';
+      }).join('');
+      h+=card(p.label,"条件 "+esc(d.conds||"")+" · 命中 "+items.length+" 只 · 已过滤 ST "+d.filtered.st+" / 空值 "+d.filtered.null+" / 无名 "+d.filtered.unnamed,
+        items.length?table([{t:"代码",l:1},{t:"名称",l:1},{t:"收盘"},{t:"距均线"},{t:"ADX"},{t:"周 CCI"},{t:"月 CCI"},{t:"振幅分位"}],rows,true)
+          :'<div class="hint">当日无标的命中该条件组。</div>');
+    });
+    $("#pick").innerHTML=h;
+  })();
+
+  /* ---------- 分组清单 ---------- */
+  (function(){
+    var d=D.scan, items=d.items||[];
+    var rows=items.map(function(x){
+      return '<tr><td class="l">'+esc(x.code)+'</td><td class="l">'+esc(x.name)+'</td>'
+        +'<td>'+num(x.close,2)+'</td><td>'+pct(x.dist,2)+'</td><td>'+pct(x.amp_pct,1)+'</td>'
+        +'<td>'+(x.dead?"是":"否")+'</td><td>'+(x.touch?"是":"否")+'</td></tr>';
+    }).join('');
+    var h='<div class="sh"><h2>分组清单</h2><span class="desc">'+esc(d.group)+' · '+esc(d.date)+'</span></div>';
+    h+=card("当日命中清单","全市场 "+d.raw_total+" 只命中，展示 "+items.length+" 只；已过滤 ST "+d.filtered.st+" / 空值 "+d.filtered.null+" / 无名 "+d.filtered.unnamed,
+      table([{t:"代码",l:1},{t:"名称",l:1},{t:"收盘"},{t:"距均线"},{t:"振幅分位"},{t:"死叉"},{t:"回踩"}],rows,true));
+    $("#scan").innerHTML=h;
+  })();
+
+  /* ---------- 数据可信度 ---------- */
+  (function(){
+    var sm=D.strategy_meta, jm=D.joint.meta, dbsj=D.picks[1].data;
+    var h='<div class="sh"><h2>数据可信度</h2><span class="desc">把限制条件摆到台面上，而不是藏在页脚</span></div>';
+    var rows=[
+      ["策略样例数据源",tagBox("合成数据",sm.ready.data_source==="synthetic_demo","warn"),esc(sm.ready.data_source_note||"")],
+      ["联合评分未来信息",tagBox("存在",jm.pit_risk===1,"warn"),esc(jm.pit_note||"")],
+      ["策略校验",tagBox("通过",sm.validate.fail===0,"ok"),"checked "+sm.validate.checked+" · fail "+sm.validate.fail],
+      ["因子库校验",tagBox("通过",D.factorlib.ready.validate_status==="PASS","ok"),D.factorlib.ready.validate_status],
+      ["选股 ST 过滤",tagBox("已执行",dbsj.filtered.st>0,"ok"),"过滤 "+dbsj.filtered.st+" 只"],
+      ["选股空值过滤",tagBox("已执行",dbsj.filtered.null>0,"ok"),"过滤 "+dbsj.filtered.null+" 只"]
+    ].map(function(r){return '<tr><td class="l">'+r[0]+'</td><td class="l">'+r[1]+'</td><td class="l" style="white-space:normal">'+r[2]+'</td></tr>';}).join('');
+    h+=card("可信度清单","绿色=机制到位；琥珀色=需留意的数据限制",table([{t:"项目",l:1},{t:"状态",l:1},{t:"说明",l:1}],rows));
+    $("#quality").innerHTML=h;
+  })();
+
+  /* ---------- 口径说明 ---------- */
+  (function(){
+    var jm=D.joint.meta;
+    var rows=[
+      ["前向收益",src.fwd_method],
+      ["日线上限",src.bars_cap+" 根 / 次"],
+      ["样本起点",src.universe_start],
+      ["建库时间",src.built_at],
+      ["联合评分公式",esc(jm.formula||"—")],
+      ["策略阈值","oos_pf "+D.strategy_meta.thresholds.oos_pf+" · robust_pf "+D.strategy_meta.thresholds.robust_pf+" · resonance "+D.strategy_meta.thresholds.resonance_rate],
+      ["信号双口径",D.signal.window.truncation_rule]
+    ].map(function(r){return '<tr><td class="l">'+r[0]+'</td><td class="l" style="white-space:normal">'+r[1]+'</td></tr>';}).join('');
+    var h='<div class="sh"><h2>口径说明</h2><span class="desc">所有数列的计算口径，集中在一处</span></div>';
+    h+=card("关键口径","读数可复核的前提是口径明确",table([{t:"口径",l:1},{t:"定义",l:1}],rows));
+    h+=card("与本平台的关系","本页是 8094 数据的独立研究视图，不是 8094 的替代品，也不写回 8094",
+      '<div class="hint" style="margin:0">8094 服务端保持原样（只读 GET）；本页固化其研究类接口的真实返回，'
+      +'剔除实盘持仓与操作导向内容，重排信息架构。数据日 '+esc(src.latest_date)+'。</div>');
+    $("#about").innerHTML=h;
+  })();
+
+  /* ---------- 导航 ---------- */
+  var links=Array.prototype.slice.call(document.querySelectorAll("#nav a"));
+  links.forEach(function(a){
+    a.addEventListener("click",function(e){
+      e.preventDefault();
+      var id=a.getAttribute("href").slice(1);
+      links.forEach(function(x){x.classList.toggle("on",x===a);});
+      Array.prototype.slice.call(document.querySelectorAll("section")).forEach(function(s){
+        s.classList.toggle("on",s.id===id);
+      });
+      window.scrollTo(0,0);
+    });
+  });
+})();
+</script>
+</body>
+</html>

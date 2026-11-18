@@ -1,7 +1,7 @@
 # 工程交付验收清单
 
 - 交付目标：内网 ai-server `192.168.2.203`，Filer `http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/`
-- 交付时间：2026-11-17 19:37:26
+- 交付时间：2026-11-18 15:22:51
 - 数值指纹：`e819989972c994d1`
 - 质量门：工程 可交付 / 策略结论 不放行 / 最终 不放行
 - 验收入口：http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/index.html
@@ -40,21 +40,21 @@
 
 | 文件 | 字节 | SHA-256 | 回读校验 |
 |---|---|---|---|
-| [`astock-quant-lab-v3.tar.gz`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz) | 2,875,065 | `cea9dba9de8106e06bdf9e193d6d0a2499a20ee26edf79e7c15ae9804f8292cd` | 通过 |
+| [`astock-quant-lab-v3.tar.gz`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-lab-v3.tar.gz) | 2,964,273 | `a2c197b9b3169ee2e9f24fe8b66af8c49dff94582999d7e99a897aa4cfc737b3` | 通过 |
 | [`astock-quant-design-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-design-report.html) | 52,918 | `e0b4360bc1fc53c94f4db6febf741959e69db84cffe66bb1edb75d79eaf7b243` | 通过 |
 | [`astock-quant-audit-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-audit-report.html) | 29,589 | `ecc5be9a80c033bdc12c10e3a5f30a2d93af5660edb4ff797081d4f69abbd0b6` | 通过 |
 | [`astock-quant-designer.zip`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/astock-quant-designer.zip) | 27,131 | `7ccd76c4c0d14fb8fa24a0b0374eb35c79dfa5acab7aad00d52a7ba993f2b29f` | 通过 |
 | [`PLATFORM_ARCHITECTURE.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/PLATFORM_ARCHITECTURE.md) | 27,468 | `56f7dfc649c03162ce550ebc0b691bd72057ce107934d22fbf092e07682095ab` | 通过 |
 | [`openapi.yaml`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/openapi.yaml) | 12,836 | `215357d18b52e555f691b1594ead27ebdda36c56907bf2d90a5107ef53560fdd` | 通过 |
 | [`schema.sql`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/schema.sql) | 12,740 | `1289f8a9922ec758e360923a700e1944e82930f8105c82bda990348882649db6` | 通过 |
-| [`contracts_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/contracts_check.json) | 1,100 | `9048ecfae271bf54f8df1b45e7f4f8f142257867c48ff1aa5c222bb4bb0be406` | 通过 |
-| [`verify.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/verify.json) | 354 | `5d33297c8bc773fbe28a9a8c371d2a0e24b508682eb72cf29dc9bdbc6d8ffb66` | 通过 |
+| [`contracts_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/contracts_check.json) | 1,100 | `7d604b261c648cd6c6257cecef050be29ee6c3905709fa8e32c80d0f20e688fd` | 通过 |
+| [`verify.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/verify.json) | 354 | `a521e02d1573bf2983d4c336505244cd2ea86c53c29a76b9aeef7b4b6d7e6bd9` | 通过 |
 | [`README.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/README.md) | 11,125 | `e124f743e0692fbb9500262817d4fa7e281629edf7382d21365d69890b88af27` | 通过 |
 | [`RUNNING.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/RUNNING.md) | 8,713 | `97fb7dc5788984c4e485c8ef2d43182d3bdd6dfc3aef28a21a08d6932e5f0e84` | 通过 |
 | [`health_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/health_check.json) | 4,043 | `edf63ffaf1a9ce82ef72dc702428377da2b5faf6e86d870590fcdbe627b16f2e` | 通过 |
 | [`workbench_probe.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/workbench_probe.json) | 5,366 | `c4e6fea270f1e67f8f7beef0339cfd2318f0d3d54cb663d65de084674f3116bf` | 通过 |
 | [`api_smoke.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/api_smoke.json) | 2,299 | `ad1b97f0f61cff14c2c12382a7232eca9f5643ae0ca09ada454bc35961f4092f` | 通过 |
-| [`web_render_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/web_render_check.json) | 282 | `f868bfe4d469e63427b1b6965bcd8bf399382b2ea57ebdd596d5e2c9184e4dde` | 通过 |
+| [`web_render_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/web_render_check.json) | 282 | `64f471deb32ac7ada0fd0be1c37b47adfc836334d1b28ced4a23a626c57f6fde` | 通过 |
 | [`web_render_remote_check.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/web_render_remote_check.json) | 260 | `d4463fcc06167e52410f4cc5d23659bed6d0f7033abc9149ed4cdd4b1e0b95e1` | 通过 |
 | [`terminal8094-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/terminal8094-report.html) | 43,277 | `85fe16ad78146e75cf26acd4cfa7963ca59f6682fa184149aba670ea67cd7427` | 通过 |
 | [`terminal_8094_probe.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/terminal_8094_probe.json) | 16,413 | `83dc072965f986713cb870e36786abf20f02f83a9da68664e19043bcb5bb9d53` | 通过 |
@@ -64,7 +64,7 @@
 | [`TERMINAL_8094_ARCH_FINAL.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/TERMINAL_8094_ARCH_FINAL.md) | 39,693 | `8f33db8ef7ba5376fe3602b240ae4a90bdda0003b779a292f8df7f0830d1e2e8` | 通过 |
 | [`TERMINAL_8094_DATA_SPEC.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/TERMINAL_8094_DATA_SPEC.md) | 66,313 | `f546b2e41b4fb5d358d4a045de9755e3e196055ff65898704d766c2fab3ea63e` | 通过 |
 | [`TERMINAL_8094_EVIDENCE.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/TERMINAL_8094_EVIDENCE.md) | 10,883 | `38e2bc7db2406cc9e3261c5e69eaba9c8c0efa9169121d2be0716594bdac2df3` | 通过 |
-| [`feikai-kdj-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-report.html) | 33,606 | `d8b397eea44b602b38028a8c0e62a4c23491df059e224b569b4b36d32a232628` | 通过 |
+| [`feikai-kdj-report.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-report.html) | 33,606 | `22665f8e365a95e6adf7d6018027bc8df5169ea08ceb3a97f2c9b888bfdffc9f` | 通过 |
 | [`feikai-kdj-result.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-result.json) | 30,438 | `ca6d33e1a298a0d245359480c4e19f3bb70f225e66fde00c806714a4bbcf21e1` | 通过 |
 | [`feikai-kdj-summary.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-summary.md) | 1,466 | `845eb23594d24ea72b63b0acc0f056a907b4ac3b6316f2d781f97f0fe82c01d0` | 通过 |
 | [`feikai-kdj-validate.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-validate.json) | 3,442 | `914ff883a0b26443a8ef65f7b840a4ff090a0e402af2d748822c19571b6f1e14` | 通过 |
@@ -72,8 +72,10 @@
 | [`feikai-kdj-v2-result.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-v2-result.json) | 40,078 | `18d2acfeec4eeb152eec2f5f8605def8cf46f007fa45c1280e6386e23e58bd64` | 通过 |
 | [`feikai-kdj-v2-summary.md`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-v2-summary.md) | 2,137 | `b560312cca99480088a9b1d5dd76235e3e847771cca8bcdd5542c7fd1d2d2c96` | 通过 |
 | [`feikai-kdj-v2-validate.json`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/feikai-kdj-v2-validate.json) | 3,697 | `57159c66c924542e37e544886cab59afe3d34346259060a8c98ea21de4272835` | 通过 |
-| [`app/index.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/index.html) | 53,307 | `7b9f9a3ea45b215454eac77ff95bf0d42731d87e0e8a5033060ddc6f8a1307c2` | 通过 |
+| [`app/index.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/index.html) | 53,430 | `191df9bf4681ec787f38d988cccb8a2416d05da26983cc9e0ce6e8e2693395c3` | 通过 |
 | [`app/snapshot.js`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/app/snapshot.js) | 154,489 | `ac2762081b8be1734d3db8a24e7ddc45deb656c45e23bd972d69635b90fb60c7` | 通过 |
+| [`r8094-clean.html`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/r8094-clean.html) | 24,239 | `8e577cd1caa94b1a7f1b72a4cc6a908247ec0731553d89a093f35f9dda9fbd6a` | 通过 |
+| [`r8094_clean_snapshot.js`](http://192.168.2.203:8888/workbuddy/astock-quant-lab/v3/r8094_clean_snapshot.js) | 141,627 | `2439c6b83ad7b0437134f714fbd9b09f75c6d5dbe2397dd476f3b99735545d12` | 通过 |
 
 ## 复现命令
 

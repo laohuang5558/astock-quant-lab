@@ -8,12 +8,12 @@
     {
       "mode": "online",
       "panels": 10,
-      "htmlChars": 70904
+      "htmlChars": 71002
     },
     {
       "mode": "offline",
       "panels": 10,
-      "htmlChars": 70822
+      "htmlChars": 71056
     }
   ]
 }
